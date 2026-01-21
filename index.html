@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body{font-family:system-ui;margin:16px}
-    .card{max-width:820px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
+    .card{max-width:860px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
     input,select,button,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
     button{cursor:pointer}
     .row{display:flex;gap:10px}
@@ -20,11 +20,10 @@
     /* Chat UI */
     .chatBox{border:1px solid #ddd;border-radius:12px;padding:10px;margin-top:10px}
     .chatHeader{display:flex;justify-content:space-between;align-items:center;gap:10px}
-    .messages{height:300px;overflow:auto;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+    .messages{height:320px;overflow:auto;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
     .msg{max-width:75%;padding:8px 10px;border-radius:12px;margin:6px 0;white-space:pre-wrap}
     .me{margin-left:auto;background:#e8f5ff}
     .them{margin-right:auto;background:#f1f1f1}
-    .msgMeta{font-size:12px;color:#666;margin-top:2px}
     .smallBtn{width:auto;padding:8px 10px}
   </style>
 </head>
@@ -264,7 +263,7 @@ function getAllowedDepartments(myDept, includeNeighbors){
 // Score
 function computeScore(me, other){
   let score=0;
-  score+=25; // département (filtré)
+  score+=25;
 
   const diff=Math.abs(me.level-other.level);
   if(diff<=1) score+=25;
@@ -359,7 +358,7 @@ btnToggleActive.onclick=async()=>{
   saveMsg.textContent=v?"Visible ✅":"Invisible ✅";
 };
 
-// Matching -> render list with Contact buttons
+// Matching
 btnFind.onclick=async()=>{
   if(!currentProfile){
     results.innerHTML="<p>Complète ton profil.</p>";
@@ -396,7 +395,6 @@ btnFind.onclick=async()=>{
     </div>
   `).join("");
 
-  // bind clicks
   document.querySelectorAll(".btnContact").forEach(btn=>{
     btn.addEventListener("click", async () => {
       const otherUid = btn.dataset.uid;
@@ -407,29 +405,25 @@ btnFind.onclick=async()=>{
 };
 
 /* =========================
-   CHAT TEMPS RÉEL
+   CHAT TEMPS RÉEL (avec erreurs visibles)
 ========================= */
 
-// pair_key stable
 function makePairKey(a,b){
   return (a < b) ? (a + "_" + b) : (b + "_" + a);
 }
 
 let currentChatId = null;
-let currentOtherUid = null;
 let unsubscribeMessages = null;
 
 async function getOrCreateChat(otherUid){
   const pair_key = makePairKey(currentUser.uid, otherUid);
 
-  // Cherche chat existant par pair_key
   const qChat = query(collection(db, "chats"), where("pair_key","==", pair_key), limit(1));
   const snap = await getDocs(qChat);
   if(!snap.empty){
     return { chatId: snap.docs[0].id, chatRef: snap.docs[0].ref };
   }
 
-  // Sinon crée
   const chatRef = await addDoc(collection(db,"chats"), {
     pair_key,
     participants: [currentUser.uid, otherUid],
@@ -451,77 +445,76 @@ function renderMessage(msg){
 }
 
 async function openChat(otherUid, otherName){
-  currentOtherUid = otherUid;
-  chatWithName.textContent = otherName || "Joueur";
-  chatInfo.textContent = "Connexion au chat...";
-  chatMsg.textContent = "";
-  msgInput.value = "";
-
-  chatSection.classList.remove("hidden");
-
-  // Stop précédent listener
-  if(unsubscribeMessages) unsubscribeMessages();
-
-  const { chatId, chatRef } = await getOrCreateChat(otherUid);
-  currentChatId = chatId;
-
-  chatInfo.textContent = "Chat ID: " + chatId;
-
-  // Real-time listener sur messages
-  const msgsRef = collection(db, "chats", chatId, "messages");
-  const qMsgs = query(msgsRef, orderBy("created_at","asc"));
-
-  messagesEl.innerHTML = "Chargement des messages...";
-  unsubscribeMessages = onSnapshot(qMsgs, (snapshot) => {
-    messagesEl.innerHTML = "";
-    snapshot.forEach(docSnap => {
-      const m = docSnap.data();
-      messagesEl.appendChild(renderMessage(m));
-    });
-    // Scroll en bas
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }, (err) => {
-    chatMsg.textContent = "Erreur écoute messages: " + err.message;
-  });
-
-  // Envoi
-  btnSend.onclick = async () => {
-    const text = msgInput.value.trim();
-    if(!text) return;
-
-    btnSend.disabled = true;
+  try{
+    chatWithName.textContent = otherName || "Joueur";
+    chatInfo.textContent = "Connexion au chat...";
     chatMsg.textContent = "";
+    msgInput.value = "";
+    messagesEl.innerHTML = "";
 
-    try{
-      // ajoute message
-      await addDoc(collection(db, "chats", chatId, "messages"), {
-        sender_id: currentUser.uid,
-        content: text,
-        created_at: serverTimestamp(),
-        read_by: [currentUser.uid]
+    chatSection.classList.remove("hidden");
+
+    if(unsubscribeMessages) unsubscribeMessages();
+    unsubscribeMessages = null;
+
+    const { chatId, chatRef } = await getOrCreateChat(otherUid);
+    currentChatId = chatId;
+
+    chatInfo.textContent = "Chat OK ✅ (ID: " + chatId + ")";
+
+    const msgsRef = collection(db, "chats", chatId, "messages");
+    const qMsgs = query(msgsRef, orderBy("created_at","asc"));
+
+    messagesEl.innerHTML = "Chargement des messages...";
+
+    unsubscribeMessages = onSnapshot(qMsgs, (snapshot) => {
+      messagesEl.innerHTML = "";
+      snapshot.forEach(docSnap => {
+        messagesEl.appendChild(renderMessage(docSnap.data()));
       });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }, (err) => {
+      chatMsg.textContent = "Erreur écoute messages: " + err.message;
+    });
 
-      // update preview
-      await updateDoc(chatRef, {
-        last_message_at: serverTimestamp(),
-        last_message_preview: text.slice(0, 120),
-        last_message_sender: currentUser.uid
-      });
+    btnSend.onclick = async () => {
+      const text = msgInput.value.trim();
+      if(!text) return;
 
-      msgInput.value = "";
-    }catch(e){
-      chatMsg.textContent = "Erreur envoi: " + e.message;
-    }finally{
-      btnSend.disabled = false;
-    }
-  };
+      btnSend.disabled = true;
+      chatMsg.textContent = "";
+
+      try{
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          sender_id: currentUser.uid,
+          content: text,
+          created_at: serverTimestamp(),
+          read_by: [currentUser.uid]
+        });
+
+        await updateDoc(chatRef, {
+          last_message_at: serverTimestamp(),
+          last_message_preview: text.slice(0, 120),
+          last_message_sender: currentUser.uid
+        });
+
+        msgInput.value = "";
+      }catch(e){
+        chatMsg.textContent = "Erreur envoi: " + (e.message || e);
+      }finally{
+        btnSend.disabled = false;
+      }
+    };
+
+  }catch(e){
+    chatInfo.textContent = "Erreur chat ❌";
+    chatMsg.textContent = (e && e.message) ? e.message : String(e);
+  }
 }
 
-// Close chat
 btnCloseChat.onclick = () => {
   chatSection.classList.add("hidden");
   currentChatId = null;
-  currentOtherUid = null;
   if(unsubscribeMessages) unsubscribeMessages();
   unsubscribeMessages = null;
 };
@@ -538,7 +531,6 @@ onAuthStateChanged(auth, async (user) => {
   authView.classList.add("hidden");
   appView.classList.remove("hidden");
   userLine.textContent = `Connecté: ${user.email}`;
-
   currentProfile = await loadProfile(user.uid);
 });
 </script>
