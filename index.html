@@ -395,6 +395,8 @@ async function loadInbox(){
 async function debugMessagesAccess(){
   try{
     const testKey = "debug_" + currentUser.uid;
+
+    // test write
     const ref = await addDoc(collection(db, "messages"), {
       pair_key: testKey,
       participants: [currentUser.uid, currentUser.uid],
@@ -405,6 +407,7 @@ async function debugMessagesAccess(){
     });
     showDebug("DEBUG write OK id=" + ref.id, null);
 
+    // test read query (avec orderBy)
     const qTest = query(
       collection(db, "messages"),
       where("pair_key", "==", testKey),
@@ -417,6 +420,7 @@ async function debugMessagesAccess(){
     showErr("DEBUG KO", e);
   }
 }
+
 
 /* =========================
    Chat (messages top-level)
@@ -444,8 +448,7 @@ async function openChat(otherUid, otherName, forcedChatId = null){
   const qMsgs = query(
   collection(db, "messages"),
   where("participants", "array-contains", currentUser.uid),
-  where("pair_key", "==", chatId),
-  orderBy("created_at", "asc")
+  where("pair_key", "==", chatId)
 );
 
 unsubscribeMessages = onSnapshot(
