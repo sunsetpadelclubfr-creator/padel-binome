@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Binôme Padel - Debug</title>
+  <style>
+    body{font-family:system-ui;margin:16px}
+    .card{max-width:520px;margin:0 auto;border:1px solid #ddd;border-radius:12px;padding:16px}
+    input,button{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
+    .muted{color:#666;font-size:14px;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Auth Debug</h2>
+
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Mot de passe" />
+    <button id="btnLogin">Se connecter</button>
+    <button id="btnSignup">Créer un compte</button>
+
+    <p class="muted" id="log"></p>
+  </div>
+
+  <!-- CDN supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    const logEl = document.getElementById("log");
+    function log(msg){
+      logEl.textContent += msg + "\n";
+    }
+
+    // 1) REMPLACE ICI
+    const SUPABASE_URL = "https://ainxaodlvxokhafmnbf.supabase.co";
+	const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpbnhhYW9sZHZ4b2toYWZtbmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjU1OTYsImV4cCI6MjA4NDU0MTU5Nn0.aZQhsO7ee4W-TdSLP9ogPkwwinEc_JJCS-iuZnzVJPQ";
+
+    // Debug démarrage
+    log("Page chargée ✅");
+    log("window.supabase = " + (window.supabase ? "OK" : "UNDEFINED ❌"));
+
+    let supabaseClient = null;
+
+    try{
+      if(!window.supabase) throw new Error("La librairie supabase-js n'a pas été chargée (CDN bloqué ou script filtré).");
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      log("Client Supabase créé ✅");
+    }catch(e){
+      log("ERREUR INIT: " + e.message);
+    }
+
+    document.getElementById("btnSignup").onclick = async () => {
+      try{
+        if(!supabaseClient) throw new Error("Client Supabase indisponible.");
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        log("signup…");
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if(error) throw error;
+        log("signup OK ✅ user=" + (data.user?.id || "(no id)"));
+        alert("Compte créé ✅");
+      }catch(e){
+        log("SIGNUP ERREUR: " + (e.message || JSON.stringify(e)));
+        alert("Erreur signup (voir log)");
+      }
+    };
+
+    document.getElementById("btnLogin").onclick = async () => {
+      try{
+        if(!supabaseClient) throw new Error("Client Supabase indisponible.");
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        log("login…");
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if(error) throw error;
+        log("login OK ✅ session=" + (data.session ? "YES" : "NO"));
+        alert("Connecté ✅");
+      }catch(e){
+        log("LOGIN ERREUR: " + (e.message || JSON.stringify(e)));
+        alert("Erreur login (voir log)");
+      }
+    };
+  </script>
+</body>
+</html>
