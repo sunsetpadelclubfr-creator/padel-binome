@@ -104,13 +104,23 @@
     </div>
 
     <p class="muted" id="saveMsg"></p>
+
+    <hr>
+
+    <h3>Trouver un binôme</h3>
+    <label>
+      <input type="checkbox" id="chkNeighbors">
+      Inclure départements voisins
+    </label>
+    <button id="btnFind">Trouver un binôme</button>
+    <div id="results"></div>
   </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
@@ -131,6 +141,7 @@ const appView = document.getElementById("appView");
 const authMsg = document.getElementById("authMsg");
 const saveMsg = document.getElementById("saveMsg");
 const userLine = document.getElementById("userLine");
+const results = document.getElementById("results");
 
 // Options
 const slotsOptions = [
@@ -188,6 +199,44 @@ document.getElementById("needsWrap").addEventListener("change",()=>{
     saveMsg.textContent="2 attentes max.";
   }
 });
+
+// Neighbor departments (extrait)
+const neighbors = {
+  "75":["77","78","91","92","93","94","95"],
+  "92":["75","78","91","93","94","95"],
+  "93":["75","92","94","95","77"],
+  "94":["75","92","93","91"],
+  "91":["75","92","94","77","78"]
+};
+
+function getAllowedDepartments(myDept, includeNeighbors){
+  if(!includeNeighbors) return [myDept];
+  return [myDept, ...(neighbors[myDept] || [])];
+}
+
+function computeScore(me, other){
+  let score=0;
+  score+=25; // département déjà filtré
+
+  const diff=Math.abs(me.level-other.level);
+  if(diff<=1) score+=25;
+  else if(diff===2) score+=15;
+  else score+=5;
+
+  if(me.objective===other.objective) score+=15;
+
+  if(
+    (me.side_pref==="left" && other.side_pref==="right") ||
+    (me.side_pref==="right" && other.side_pref==="left")
+  ) score+=10;
+  else if(me.side_pref==="either" || other.side_pref==="either") score+=8;
+
+  if(me.style===other.style) score+=10;
+  if(me.slots?.some(s=>other.slots?.includes(s))) score+=10;
+  if(me.partner_needs?.some(n=>other.partner_needs?.includes(n))) score+=5;
+
+  return score;
+}
 
 async function loadProfile(uid){
   const ref=doc(db,"profiles",uid);
@@ -256,6 +305,35 @@ btnToggleActive.onclick=async()=>{
   await setDoc(doc(db,"profiles",currentUser.uid),{is_active:v,updated_at:serverTimestamp()},{merge:true});
   currentProfile={...(currentProfile||{}),is_active:v};
   saveMsg.textContent=v?"Visible":"Invisible";
+};
+
+btnFind.onclick=async()=>{
+  if(!currentProfile){
+    results.innerHTML="<p>Complète ton profil.</p>";
+    return;
+  }
+  results.innerHTML="Recherche...";
+  const allowed=getAllowedDepartments(currentProfile.department, chkNeighbors.checked);
+  const q=query(collection(db,"profiles"),where("is_active","==",true));
+  const snap=await getDocs(q);
+  let list=[];
+  snap.forEach(d=>{
+    if(d.id===currentUser.uid) return;
+    const p=d.data();
+    if(!allowed.includes(p.department)) return;
+    const score=computeScore(currentProfile,p);
+    list.push({id:d.id,...p,score});
+  });
+  list.sort((a,b)=>b.score-a.score);
+  if(!list.length){results.innerHTML="<p>Aucun binôme trouvé.</p>";return;}
+  results.innerHTML=list.map(p=>`
+    <div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:8px">
+      <strong>${p.display_name}</strong> – ${p.department}<br>
+      Niveau ${p.level} – ${p.objective}<br>
+      Score: <strong>${p.score}%</strong><br>
+      <button onclick="alert('Chat bientôt')">Contacter</button>
+    </div>
+  `).join("");
 };
 
 onAuthStateChanged(auth,async(user)=>{
