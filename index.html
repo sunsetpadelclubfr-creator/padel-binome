@@ -3,66 +3,374 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Diag Supabase V2</title>
+  <title>Padel Binôme</title>
   <style>
     body{font-family:system-ui;margin:16px}
-    button{padding:12px 16px;font-size:16px}
-    pre{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:10px}
+    .card{max-width:720px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
+    input,select,button{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
+    button{cursor:pointer}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    .muted{color:#666;font-size:14px}
+    .hidden{display:none}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+    label.chip{border:1px solid #ccc;border-radius:999px;padding:6px 10px;display:flex;gap:6px;align-items:center}
+    hr{margin:16px 0}
   </style>
 </head>
 <body>
-  <h2>Diag Supabase V2 ✅</h2>
-  <p>Si tu vois “Diag Supabase V2”, c’est le bon fichier.</p>
-  <button id="go">Lancer les tests</button>
-  <pre id="out"></pre>
 
-<script>
-  const SUPABASE_URL = "https://ainxaodlvxokhafmnbf.supabase.co";
-  const KEY = "COLLE_TA_CLE_ANON_ICI_EN_1_SEULE_LIGNE";
+<div class="card">
+  <h2>Padel Binôme</h2>
 
-  const out = document.getElementById("out");
-  const log = (m) => out.textContent += m + "\n";
+  <!-- AUTH -->
+  <div id="authView">
+    <h3>Connexion / Inscription</h3>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Mot de passe (min 6)">
+    <div class="row">
+      <button id="btnLogin">Se connecter</button>
+      <button id="btnSignup">Créer un compte</button>
+    </div>
+    <p class="muted" id="authMsg"></p>
+  </div>
 
-  async function testNoCors(name, url){
-    log("\n--- " + name + " (no-cors) ---");
-    try{
-      await fetch(url, { mode: "no-cors" });
-      log("OK ✅ (réseau atteint le domaine, réponse opaque)");
-    }catch(e){
-      log("FAILED ❌ " + (e.message || e));
-    }
-  }
+  <!-- APP -->
+  <div id="appView" class="hidden">
+    <div class="row">
+      <div>
+        <p id="userLine" class="muted"></p>
+      </div>
+      <div>
+        <button id="btnLogout">Se déconnecter</button>
+      </div>
+    </div>
 
-  async function testCors(name, url, headers){
-    log("\n--- " + name + " (cors) ---");
-    try{
-      const r = await fetch(url, { headers });
-      log("STATUS: " + r.status + " | type=" + r.type);
-      const txt = await r.text();
-      log("BODY (début): " + txt.slice(0, 200));
-    }catch(e){
-      log("FAILED ❌ " + (e.message || e));
-    }
-  }
+    <hr>
 
-  document.getElementById("go").onclick = async () => {
-    out.textContent = "";
-    log("Location: " + window.location.href);
-    log("Protocol: " + window.location.protocol);
+    <h3>Mon profil joueur (modifiable)</h3>
 
-    await testNoCors("A) example.com", "https://example.com/");
-    await testNoCors("B) supabase health", SUPABASE_URL + "/auth/v1/health");
+    <!-- Q1 -->
+    <input id="display_name" placeholder="Pseudo / Prénom (ex: Alex)">
 
-    await testCors(
-      "C) supabase rest profiles",
-      SUPABASE_URL + "/rest/v1/profiles?select=id&limit=1",
-      {
-        "apikey": KEY,
-        "Authorization": "Bearer " + KEY,
-        "Accept": "application/json"
-      }
-    );
+    <!-- Q1 -->
+    <input id="department" placeholder="Département (ex: 75)">
+
+    <!-- Q2 -->
+    <input id="club" placeholder="Club (optionnel)">
+
+    <!-- Q3 -->
+    <select id="frequency">
+      <option value="1">1x / semaine</option>
+      <option value="2">2x / semaine</option>
+      <option value="3">3x / semaine</option>
+      <option value="4">4x / semaine</option>
+      <option value="5">5+ / semaine</option>
+    </select>
+
+    <!-- Q4 slots -->
+    <p class="muted">Créneaux (choix multiples)</p>
+    <div class="chips" id="slotsWrap"></div>
+
+    <!-- Q5 -->
+    <select id="level"></select>
+
+    <!-- Q6 -->
+    <select id="objective">
+      <option value="leisure">Loisir</option>
+      <option value="progress">Progression</option>
+      <option value="tournament">Tournois</option>
+      <option value="performance">Performance</option>
+    </select>
+
+    <!-- Q7 -->
+    <select id="side_pref">
+      <option value="left">Côté gauche</option>
+      <option value="right">Côté droit</option>
+      <option value="either">Indifférent</option>
+    </select>
+
+    <!-- Q8 -->
+    <select id="style">
+      <option value="offensive">Offensif</option>
+      <option value="builder">Patient / Constructeur</option>
+      <option value="defensive">Défenseur</option>
+      <option value="versatile">Polyvalent</option>
+    </select>
+
+    <!-- Q10 -->
+    <select id="communication">
+      <option value="low">Plutôt silencieux</option>
+      <option value="normal">Normal</option>
+      <option value="high">Très communicant</option>
+    </select>
+
+    <!-- Q11 -->
+    <select id="mental">
+      <option value="stable">Stable sous pression</option>
+      <option value="sometimes_tilt">Parfois je tilt</option>
+      <option value="often_tilt">Je tilt souvent</option>
+    </select>
+
+    <!-- Q12 partner needs -->
+    <p class="muted">Attentes partenaire (2 max)</p>
+    <div class="chips" id="needsWrap"></div>
+
+    <div class="row">
+      <button id="btnSave">Enregistrer mon profil</button>
+      <button id="btnToggleActive">Me rendre visible/invisible</button>
+    </div>
+
+    <p class="muted" id="saveMsg"></p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // =========================
+  // // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
+  authDomain: "padel-binome.firebaseapp.com",
+  projectId: "padel-binome",
+  storageBucket: "padel-binome.firebasestorage.app",
+  messagingSenderId: "968501656511",
+  appId: "1:968501656511:web:464dca20866e202d53ff0a"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+  // =========================
+  const firebaseConfig = {
+    apiKey: "COLLE_ICI",
+    authDomain: "COLLE_ICI",
+    projectId: "COLLE_ICI",
+    storageBucket: "COLLE_ICI",
+    messagingSenderId: "COLLE_ICI",
+    appId: "COLLE_ICI"
   };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // UI refs
+  const authView = document.getElementById("authView");
+  const appView  = document.getElementById("appView");
+  const authMsg  = document.getElementById("authMsg");
+  const saveMsg  = document.getElementById("saveMsg");
+  const userLine = document.getElementById("userLine");
+
+  const slotsOptions = [
+    ["week_evening", "Semaine soir"],
+    ["weekend", "Week-end"],
+    ["lunch", "Midi"],
+    ["flex", "Variable"]
+  ];
+
+  const needsOptions = [
+    ["consistency", "Régularité"],
+    ["aggression", "Agressivité"],
+    ["coaching", "Coaching/consignes"],
+    ["good_vibes", "Bonne ambiance"],
+    ["serious", "Sérieux/tournois"],
+    ["adaptability", "Adaptabilité"]
+  ];
+
+  function setText(el, txt){ el.textContent = txt || ""; }
+
+  // Build level select 1..10
+  const levelSel = document.getElementById("level");
+  for(let i=1;i<=10;i++){
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = "Niveau " + i;
+    levelSel.appendChild(opt);
+  }
+
+  // Build chips (checkboxes)
+  function buildCheckboxChips(wrapId, options){
+    const wrap = document.getElementById(wrapId);
+    wrap.innerHTML = "";
+    options.forEach(([val, label]) => {
+      const lab = document.createElement("label");
+      lab.className = "chip";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = val;
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(label));
+      wrap.appendChild(lab);
+    });
+  }
+
+  buildCheckboxChips("slotsWrap", slotsOptions);
+  buildCheckboxChips("needsWrap", needsOptions);
+
+  function getCheckedValues(wrapId){
+    return Array.from(document.querySelectorAll(`#${wrapId} input[type="checkbox"]:checked`))
+      .map(cb => cb.value);
+  }
+
+  function setCheckedValues(wrapId, values){
+    const set = new Set(values || []);
+    Array.from(document.querySelectorAll(`#${wrapId} input[type="checkbox"]`))
+      .forEach(cb => cb.checked = set.has(cb.value));
+  }
+
+  // Limit partner needs to 2 selections
+  document.getElementById("needsWrap").addEventListener("change", () => {
+    const checked = getCheckedValues("needsWrap");
+    if(checked.length > 2){
+      // Uncheck the last changed checkbox (simpler: remove newest)
+      const inputs = Array.from(document.querySelectorAll(`#needsWrap input[type="checkbox"]`));
+      // uncheck the last checked input to keep 2
+      for(let i=inputs.length-1;i>=0;i--){
+        if(inputs[i].checked){
+          inputs[i].checked = false;
+          break;
+        }
+      }
+      setText(saveMsg, "Tu peux sélectionner 2 attentes maximum.");
+    }
+  });
+
+  async function loadProfile(uid){
+    const ref = doc(db, "profiles", uid);
+    const snap = await getDoc(ref);
+    if(!snap.exists()){
+      setText(saveMsg, "Profil non créé encore. Remplis puis Enregistrer.");
+      return null;
+    }
+    const p = snap.data();
+
+    document.getElementById("display_name").value = p.display_name || "";
+    document.getElementById("department").value = p.department || "";
+    document.getElementById("club").value = p.club || "";
+    document.getElementById("frequency").value = String(p.frequency ?? 1);
+    setCheckedValues("slotsWrap", p.slots || []);
+    document.getElementById("level").value = String(p.level ?? 1);
+    document.getElementById("objective").value = p.objective || "leisure";
+    document.getElementById("side_pref").value = p.side_pref || "either";
+    document.getElementById("style").value = p.style || "versatile";
+    document.getElementById("communication").value = p.communication || "normal";
+    document.getElementById("mental").value = p.mental || "stable";
+    setCheckedValues("needsWrap", p.partner_needs || []);
+    return p;
+  }
+
+  async function saveProfile(uid, existing){
+    const display_name = document.getElementById("display_name").value.trim();
+    const department = document.getElementById("department").value.trim();
+    const club = document.getElementById("club").value.trim();
+
+    if(!display_name) throw new Error("Pseudo/Prénom requis.");
+    if(!department) throw new Error("Département requis.");
+
+    const payload = {
+      display_name,
+      department,
+      club: club || "",
+      frequency: Number(document.getElementById("frequency").value),
+      slots: getCheckedValues("slotsWrap"),
+      level: Number(document.getElementById("level").value),
+      objective: document.getElementById("objective").value,
+      side_pref: document.getElementById("side_pref").value,
+      style: document.getElementById("style").value,
+      communication: document.getElementById("communication").value,
+      mental: document.getElementById("mental").value,
+      partner_needs: getCheckedValues("needsWrap"),
+      is_active: existing?.is_active ?? true,
+      updated_at: serverTimestamp(),
+      created_at: existing?.created_at ?? serverTimestamp()
+    };
+
+    await setDoc(doc(db, "profiles", uid), payload, { merge: true });
+    return payload;
+  }
+
+  let currentUser = null;
+  let currentProfile = null;
+
+  // AUTH handlers
+  document.getElementById("btnSignup").onclick = async () => {
+    setText(authMsg, "Création du compte…");
+    const email = document.getElementById("email").value.trim();
+    const pw = document.getElementById("password").value;
+    try{
+      await createUserWithEmailAndPassword(auth, email, pw);
+      setText(authMsg, "");
+    }catch(e){
+      setText(authMsg, "Erreur: " + (e.message || e));
+    }
+  };
+
+  document.getElementById("btnLogin").onclick = async () => {
+    setText(authMsg, "Connexion…");
+    const email = document.getElementById("email").value.trim();
+    const pw = document.getElementById("password").value;
+    try{
+      await signInWithEmailAndPassword(auth, email, pw);
+      setText(authMsg, "");
+    }catch(e){
+      setText(authMsg, "Erreur: " + (e.message || e));
+    }
+  };
+
+  document.getElementById("btnLogout").onclick = async () => {
+    await signOut(auth);
+  };
+
+  document.getElementById("btnSave").onclick = async () => {
+    if(!currentUser) return;
+    setText(saveMsg, "Enregistrement…");
+    try{
+      currentProfile = await saveProfile(currentUser.uid, currentProfile);
+      setText(saveMsg, "Profil enregistré ✅");
+    }catch(e){
+      setText(saveMsg, "Erreur: " + (e.message || e));
+    }
+  };
+
+  document.getElementById("btnToggleActive").onclick = async () => {
+    if(!currentUser) return;
+    const newVal = !(currentProfile?.is_active ?? true);
+    await setDoc(doc(db, "profiles", currentUser.uid), {
+      is_active: newVal,
+      updated_at: serverTimestamp()
+    }, { merge: true });
+    currentProfile = { ...(currentProfile || {}), is_active: newVal };
+    setText(saveMsg, newVal ? "Tu es visible ✅" : "Tu es invisible ✅");
+  };
+
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    if(!user){
+      appView.classList.add("hidden");
+      authView.classList.remove("hidden");
+      setText(userLine, "");
+      return;
+    }
+
+    authView.classList.add("hidden");
+    appView.classList.remove("hidden");
+    setText(userLine, `Connecté: ${user.email} (uid: ${user.uid})`);
+
+    setText(saveMsg, "Chargement du profil…");
+    currentProfile = await loadProfile(user.uid);
+    setText(saveMsg, currentProfile ? "Profil chargé ✅ (modifiable)" : "Crée ton profil puis Enregistrer.");
+  });
 </script>
+
 </body>
 </html>
