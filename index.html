@@ -1,217 +1,356 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<title>Padel Binôme</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{font-family:system-ui;margin:12px}
-input,button,textarea{width:100%;padding:10px;margin:6px 0}
-.hidden{display:none}
-.box{border:1px solid #ccc;padding:10px;margin:8px 0}
-.msg{margin:4px 0;padding:6px;border-radius:6px}
-.me{background:#dff}
-.them{background:#eee}
-</style>
+  <meta charset="utf-8">
+  <title>Padel Binôme</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui;margin:12px}
+    input,button,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
+    button{cursor:pointer}
+    .hidden{display:none}
+    .box{border:1px solid #ddd;border-radius:12px;padding:12px;margin:10px 0}
+    .muted{color:#666;font-size:14px}
+    .msg{margin:6px 0;padding:8px;border-radius:10px;max-width:75%}
+    .me{background:#dff;margin-left:auto}
+    .them{background:#eee;margin-right:auto}
+    #messages{border:1px solid #eee;border-radius:12px;padding:10px;height:320px;overflow:auto;background:#fafafa}
+    pre{background:#111;color:#eee;padding:10px;border-radius:10px;white-space:pre-wrap}
+  </style>
 </head>
 <body>
 
 <h2>Padel Binôme</h2>
 
-<div id="authView">
-  <input id="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Mot de passe">
+<div id="authView" class="box">
+  <h3>Connexion / Inscription</h3>
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Mot de passe (min 6)">
   <button id="btnLogin" type="button">Se connecter</button>
   <button id="btnSignup" type="button">Créer un compte</button>
-  <p id="authMsg"></p>
+  <p id="authMsg" class="muted"></p>
+
+  <details>
+    <summary>Debug</summary>
+    <pre id="debug"></pre>
+  </details>
 </div>
 
-<div id="appView" class="hidden">
-  <p id="userLine"></p>
+<div id="appView" class="box hidden">
+  <p id="userLine" class="muted"></p>
   <button id="btnLogout" type="button">Se déconnecter</button>
+
+  <hr>
 
   <h3>Mon profil</h3>
   <input id="display_name" placeholder="Pseudo">
-  <input id="department" placeholder="Département">
+  <input id="department" placeholder="Département (ex: 75)">
   <button id="btnSave" type="button">Enregistrer</button>
-  <p id="saveMsg"></p>
+  <p id="saveMsg" class="muted"></p>
 
-  <h3>Binômes</h3>
+  <hr>
+
+  <h3>Binômes (même département)</h3>
   <button id="btnFind" type="button">Rechercher</button>
   <div id="results"></div>
 
-  <h3>Mes conversations</h3>
+  <hr>
+
+  <h3>Inbox (calculée)</h3>
   <button id="btnInbox" type="button">Rafraîchir</button>
   <div id="inbox"></div>
+  <p id="inboxMsg" class="muted"></p>
+
+  <hr>
 
   <div id="chatSection" class="hidden">
-    <h3 id="chatTitle"></h3>
-    <div id="messages"></div>
-    <textarea id="msgInput"></textarea>
+    <h3 id="chatTitle">Chat</h3>
+    <div id="messages">—</div>
+    <textarea id="msgInput" rows="2" placeholder="Ton message..."></textarea>
     <button id="btnSend" type="button">Envoyer</button>
-    <p id="chatMsg"></p>
+    <p id="chatMsg" class="muted"></p>
   </div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { describes as a, getAuth, onAuthStateChanged,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp,
-  collection, getDocs, query, where, orderBy, limit, addDoc, onSnapshot }
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import {
+    getFirestore,
+    doc, getDoc, setDoc, serverTimestamp,
+    collection, getDocs, query, where, orderBy, limit,
+    addDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
-  authDomain: "padel-binome.firebaseapp.com",
-  projectId: "padel-binome",
-  storageBucket: "padel-binome.firebasestorage.app",
-  messagingSenderId: "968501656511",
-  appId: "1:968501656511:web:464dca20866e202d53ff0a"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
+    authDomain: "padel-binome.firebaseapp.com",
+    projectId: "padel-binome",
+    storageBucket: "padel-binome.firebasestorage.app",
+    messagingSenderId: "968501656511",
+    appId: "1:968501656511:web:464dca20866e202d53ff0a"
+  };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-const authView = document.getElementById("authView");
-const appView = document.getElementById("appView");
-const authMsg = document.getElementById("authMsg");
-const email = document.getElementById("email");
-const password = document.getElementById("password");
-const btnLogin = document.getElementById("btnLogin");
-const btnSignup = document.getElementById("btnSignup");
-const btnLogout = document.getElementById("btnLogout");
-const userLine = document.getElementById("userLine");
+  const authView = document.getElementById("authView");
+  const appView = document.getElementById("appView");
+  const authMsg = document.getElementById("authMsg");
+  const debugEl = document.getElementById("debug");
 
-const display_name = document.getElementById("display_name");
-const department = document.getElementById("department");
-const btnSave = document.getElementById("btnSave");
-const saveMsg = document.getElementById("saveMsg");
+  const email = document.getElementById("email");
+  const password = document.getElementById("password");
+  const btnLogin = document.getElementById("btnLogin");
+  const btnSignup = document.getElementById("btnSignup");
+  const btnLogout = document.getElementById("btnLogout");
 
-const btnFind = document.getElementById("btnFind");
-const results = document.getElementById("results");
+  const userLine = document.getElementById("userLine");
 
-const btnInbox = document.getElementById("btnInbox");
-const inbox = document.getElementById("inbox");
+  const display_name = document.getElementById("display_name");
+  const department = document.getElementById("department");
+  const btnSave = document.getElementById("btnSave");
+  const saveMsg = document.getElementById("saveMsg");
 
-const chatSection = document.getElementById("chatSection");
-const chatTitle = document.getElementById("chatTitle");
-const messagesDiv = document.getElementById("messages");
-const msgInput = document.getElementById("msgInput");
-const btnSend = document.getElementById("btnSend");
-const chatMsg = document.getElementById("chatMsg");
+  const btnFind = document.getElementById("btnFind");
+  const results = document.getElementById("results");
 
-let currentUser = null;
-let currentProfile = null;
-let currentChatId = null;
-let otherUid = null;
-let unsub = null;
+  const btnInbox = document.getElementById("btnInbox");
+  const inbox = document.getElementById("inbox");
+  const inboxMsg = document.getElementById("inboxMsg");
 
-function pairKey(a,b){ return a<b?`${a}_${b}`:`${b}_${a}`; }
+  const chatSection = document.getElementById("chatSection");
+  const chatTitle = document.getElementById("chatTitle");
+  const messagesDiv = document.getElementById("messages");
+  const msgInput = document.getElementById("msgInput");
+  const btnSend = document.getElementById("btnSend");
+  const chatMsg = document.getElementById("chatMsg");
 
-btnLogin.onclick = async()=>{
-  try{ await signInWithEmailAndPassword(auth,email.value,password.value); }
-  catch(e){ authMsg.textContent=e.message; }
-};
-btnSignup.onclick = async()=>{
-  try{ await createUserWithEmailAndPassword(auth,email.value,password.value); }
-  catch(e){ authMsg.textContent=e.message; }
-};
-btnLogout.onclick = ()=>signOut(auth);
+  let currentUser = null;
+  let currentChatId = null;
+  let otherUid = null;
+  let unsub = null;
 
-onAuthStateChanged(auth, async(u)=>{
-  currentUser=u;
-  if(!u){ authView.classList.remove("hidden"); appView.classList.add("hidden"); return;}
-  authView.classList.add("hidden"); appView.classList.remove("hidden");
-  userLine.textContent=u.email+" | "+u.uid;
-  const snap=await getDoc(doc(db,"profiles",u.uid));
-  if(snap.exists()){ currentProfile=snap.data();
-    display_name.value=currentProfile.display_name||"";
-    department.value=currentProfile.department||"";
+  function logDebug(title, obj){
+    debugEl.textContent = `[${new Date().toISOString()}] ${title}\n` +
+      JSON.stringify(obj, Object.getOwnPropertyNames(obj), 2);
+    console.log(title, obj);
   }
-  loadInbox();
-});
 
-btnSave.onclick = async()=>{
-  const data={display_name:display_name.value,department:department.value,is_active:true,updated_at:serverTimestamp()};
-  await setDoc(doc(db,"profiles",currentUser.uid),data,{merge:true});
-  saveMsg.textContent="Profil enregistré";
-};
-
-btnFind.onclick = async()=>{
-  results.innerHTML="";
-  const q=query(collection(db,"profiles"),where("is_active","==",true));
-  const snap=await getDocs(q);
-  snap.forEach(d=>{
-    if(d.id===currentUser.uid) return;
-    const p=d.data();
-    if(p.department!==department.value) return;
-    const b=document.createElement("button");
-    b.textContent="Contacter "+p.display_name;
-    b.onclick=()=>openChat(d.id,p.display_name);
-    results.appendChild(b);
+  window.addEventListener("error", (e) => {
+    authMsg.textContent = "Erreur JS: " + e.message;
+    logDebug("window.error", e);
   });
-};
-
-async function loadInbox(){
-  inbox.innerHTML="";
-  const q=query(collection(db,"messages"),
-    where("participants","array-contains",currentUser.uid),
-    orderBy("created_at_ms","desc"),
-    limit(50));
-  const snap=await getDocs(q);
-  const seen=new Set();
-  snap.forEach(d=>{
-    const m=d.data();
-    if(seen.has(m.pair_key)) return;
-    seen.add(m.pair_key);
-    const o=m.sender_id===currentUser.uid?m.recipient_id:m.sender_id;
-    const b=document.createElement("button");
-    b.textContent="Chat "+o;
-    b.onclick=()=>openChat(o,"Joueur",m.pair_key);
-    inbox.appendChild(b);
+  window.addEventListener("unhandledrejection", (e) => {
+    authMsg.textContent = "Promise rejetée: " + (e.reason?.message || e.reason);
+    logDebug("unhandledrejection", e.reason);
   });
-}
-btnInbox.onclick=loadInbox;
 
-async function openChat(uid,name,forced){
-  if(unsub) unsub();
-  otherUid=uid;
-  currentChatId=forced||pairKey(currentUser.uid,uid);
-  chatTitle.textContent="Chat avec "+name;
-  chatSection.classList.remove("hidden");
-  messagesDiv.innerHTML="Chargement...";
-  const q=query(collection(db,"messages"),
-    where("participants","array-contains",currentUser.uid),
-    where("pair_key","==",currentChatId),
-    orderBy("created_at_ms","asc"));
-  unsub=onSnapshot(q,(snap)=>{
-    messagesDiv.innerHTML="";
-    snap.forEach(d=>{
-      const m=d.data();
-      const div=document.createElement("div");
-      div.className="msg "+(m.sender_id===currentUser.uid?"me":"them");
-      div.textContent=m.content;
-      messagesDiv.appendChild(div);
+  function pairKey(a,b){ return a<b ? `${a}_${b}` : `${b}_${a}`; }
+
+  // AUTH
+  btnLogin.addEventListener("click", async (e) => {
+    e.preventDefault();
+    authMsg.textContent = "Connexion...";
+    try{
+      await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
+      authMsg.textContent = "";
+    }catch(err){
+      authMsg.textContent = "Erreur login: " + (err?.message || err);
+      logDebug("login.error", err);
+    }
+  });
+
+  btnSignup.addEventListener("click", async (e) => {
+    e.preventDefault();
+    authMsg.textContent = "Création...";
+    try{
+      await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
+      authMsg.textContent = "";
+    }catch(err){
+      authMsg.textContent = "Erreur signup: " + (err?.message || err);
+      logDebug("signup.error", err);
+    }
+  });
+
+  btnLogout.addEventListener("click", async () => {
+    await signOut(auth);
+  });
+
+  onAuthStateChanged(auth, async (u) => {
+    currentUser = u;
+    if(!u){
+      appView.classList.add("hidden");
+      authView.classList.remove("hidden");
+      return;
+    }
+    authView.classList.add("hidden");
+    appView.classList.remove("hidden");
+    userLine.textContent = `Connecté: ${u.email} | uid=${u.uid} | projectId=${app.options.projectId}`;
+
+    // charge profil
+    const snap = await getDoc(doc(db,"profiles",u.uid));
+    if(snap.exists()){
+      const p = snap.data();
+      display_name.value = p.display_name || "";
+      department.value = p.department || "";
+    }
+
+    await loadInbox();
+  });
+
+  // PROFILE
+  btnSave.addEventListener("click", async () => {
+    if(!currentUser) return;
+    saveMsg.textContent = "Enregistrement...";
+    await setDoc(doc(db,"profiles",currentUser.uid), {
+      display_name: display_name.value.trim(),
+      department: department.value.trim(),
+      is_active: true,
+      updated_at: serverTimestamp(),
+      created_at: serverTimestamp()
+    }, { merge:true });
+    saveMsg.textContent = "Profil enregistré ✅";
+  });
+
+  // FIND
+  btnFind.addEventListener("click", async () => {
+    results.innerHTML = "";
+    const dep = department.value.trim();
+    if(!dep){ results.innerHTML = "<p class='muted'>Ajoute ton département.</p>"; return; }
+
+    const q = query(collection(db,"profiles"), where("is_active","==",true));
+    const snap = await getDocs(q);
+
+    snap.forEach(d => {
+      if(d.id === currentUser.uid) return;
+      const p = d.data();
+      if((p.department||"") !== dep) return;
+
+      const div = document.createElement("div");
+      div.className = "box";
+      div.innerHTML = `<strong>${p.display_name||"Joueur"}</strong> — ${p.department}<br>`;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = "Contacter";
+      b.onclick = () => openChat(d.id, p.display_name || "Joueur");
+      div.appendChild(b);
+      results.appendChild(div);
     });
-  },e=>chatMsg.textContent=e.message);
-}
-
-btnSend.onclick = async()=>{
-  const t=msgInput.value.trim();
-  if(!t) return;
-  await addDoc(collection(db,"messages"),{
-    pair_key:currentChatId,
-    participants:[currentUser.uid,otherUid],
-    sender_id:currentUser.uid,
-    recipient_id:otherUid,
-    content:t,
-    created_at_ms:Date.now()
   });
-  msgInput.value="";
-};
+
+  // INBOX (calculée)
+  async function loadInbox(){
+    inboxMsg.textContent = "";
+    inbox.innerHTML = "Chargement...";
+    try{
+      const qLast = query(
+        collection(db,"messages"),
+        where("participants","array-contains", currentUser.uid),
+        orderBy("created_at_ms","desc"),
+        limit(50)
+      );
+      const snap = await getDocs(qLast);
+      inbox.innerHTML = "";
+      const seen = new Set();
+
+      snap.forEach(d => {
+        const m = d.data();
+        if(!m.pair_key) return;
+        if(seen.has(m.pair_key)) return;
+        seen.add(m.pair_key);
+
+        const o = (m.sender_id === currentUser.uid) ? m.recipient_id : m.sender_id;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Ouvrir chat " + o;
+        btn.onclick = () => openChat(o, "Joueur", m.pair_key);
+        inbox.appendChild(btn);
+      });
+
+      if(seen.size === 0){
+        inbox.innerHTML = "<p class='muted'>Aucune conversation.</p>";
+      }
+    }catch(err){
+      inbox.innerHTML = "<p class='muted'>Inbox indisponible.</p>";
+      inboxMsg.textContent = "Erreur inbox: " + (err?.message || err);
+      logDebug("inbox.error", err);
+    }
+  }
+
+  btnInbox.addEventListener("click", loadInbox);
+
+  // CHAT
+  async function openChat(uid, name, forcedKey = null){
+    if(unsub) unsub();
+    otherUid = uid;
+    currentChatId = forcedKey || pairKey(currentUser.uid, uid);
+
+    chatSection.classList.remove("hidden");
+    chatTitle.textContent = "Chat avec " + name;
+    chatMsg.textContent = "";
+    messagesDiv.textContent = "Chargement...";
+
+    const q = query(
+      collection(db,"messages"),
+      where("participants","array-contains", currentUser.uid),
+      where("pair_key","==", currentChatId),
+      orderBy("created_at_ms","asc")
+    );
+
+    unsub = onSnapshot(q, (snap) => {
+      messagesDiv.innerHTML = "";
+      if(snap.empty){
+        messagesDiv.innerHTML = "<p class='muted'>Aucun message.</p>";
+        return;
+      }
+      snap.forEach(d => {
+        const m = d.data();
+        const div = document.createElement("div");
+        div.className = "msg " + (m.sender_id === currentUser.uid ? "me" : "them");
+        div.textContent = m.content || "";
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }, (err) => {
+      chatMsg.textContent = "Erreur chat: " + (err?.message || err);
+      logDebug("chat.listen.error", err);
+    });
+  }
+
+  btnSend.addEventListener("click", async () => {
+    const t = msgInput.value.trim();
+    if(!t) return;
+
+    btnSend.disabled = true;
+    chatMsg.textContent = "";
+
+    try{
+      await addDoc(collection(db,"messages"), {
+        pair_key: currentChatId,
+        participants: [currentUser.uid, otherUid],
+        sender_id: currentUser.uid,
+        recipient_id: otherUid,
+        content: t,
+        created_at_ms: Date.now()
+      });
+      msgInput.value = "";
+      await loadInbox();
+    }catch(err){
+      chatMsg.textContent = "Erreur envoi: " + (err?.message || err);
+      logDebug("send.error", err);
+    }finally{
+      btnSend.disabled = false;
+    }
+  });
 </script>
+
 </body>
 </html>
