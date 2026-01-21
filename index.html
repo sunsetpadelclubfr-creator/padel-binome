@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body{font-family:system-ui;margin:16px}
-    .card{max-width:760px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
-    input,select,button{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
+    .card{max-width:820px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
+    input,select,button,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
     button{cursor:pointer}
     .row{display:flex;gap:10px}
     .row>*{flex:1}
@@ -16,6 +16,16 @@
     .chips{display:flex;flex-wrap:wrap;gap:8px}
     label.chip{border:1px solid #ccc;border-radius:999px;padding:6px 10px;display:flex;gap:6px;align-items:center}
     hr{margin:16px 0}
+
+    /* Chat UI */
+    .chatBox{border:1px solid #ddd;border-radius:12px;padding:10px;margin-top:10px}
+    .chatHeader{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .messages{height:300px;overflow:auto;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+    .msg{max-width:75%;padding:8px 10px;border-radius:12px;margin:6px 0;white-space:pre-wrap}
+    .me{margin-left:auto;background:#e8f5ff}
+    .them{margin-right:auto;background:#f1f1f1}
+    .msgMeta{font-size:12px;color:#666;margin-top:2px}
+    .smallBtn{width:auto;padding:8px 10px}
   </style>
 </head>
 <body>
@@ -114,13 +124,43 @@
     </label>
     <button id="btnFind">Trouver un binôme</button>
     <div id="results"></div>
+
+    <hr>
+
+    <!-- CHAT -->
+    <div id="chatSection" class="hidden">
+      <h3>Chat</h3>
+      <div class="chatBox">
+        <div class="chatHeader">
+          <div>
+            <div><strong id="chatWithName">—</strong></div>
+            <div class="muted" id="chatInfo">—</div>
+          </div>
+          <button class="smallBtn" id="btnCloseChat">Fermer</button>
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="row" style="margin-top:8px">
+          <textarea id="msgInput" rows="2" placeholder="Écris ton message..."></textarea>
+          <button class="smallBtn" id="btnSend">Envoyer</button>
+        </div>
+        <p class="muted" id="chatMsg"></p>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getFirestore,
+  doc, getDoc, setDoc, updateDoc, serverTimestamp,
+  collection, getDocs, query, where, limit, orderBy,
+  addDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
@@ -143,6 +183,14 @@ const saveMsg = document.getElementById("saveMsg");
 const userLine = document.getElementById("userLine");
 const results = document.getElementById("results");
 
+const chatSection = document.getElementById("chatSection");
+const chatWithName = document.getElementById("chatWithName");
+const chatInfo = document.getElementById("chatInfo");
+const messagesEl = document.getElementById("messages");
+const msgInput = document.getElementById("msgInput");
+const btnSend = document.getElementById("btnSend");
+const chatMsg = document.getElementById("chatMsg");
+
 // Options
 const slotsOptions = [
   ["week_evening","Semaine soir"],
@@ -159,7 +207,7 @@ const needsOptions = [
   ["adaptability","Adaptabilité"]
 ];
 
-// Build selects
+// Build level 1..10
 const levelSel = document.getElementById("level");
 for(let i=1;i<=10;i++){
   const o=document.createElement("option");
@@ -167,7 +215,7 @@ for(let i=1;i<=10;i++){
   levelSel.appendChild(o);
 }
 
-// Chips
+// Chips builder
 function buildChips(wrapId, opts){
   const w=document.getElementById(wrapId); w.innerHTML="";
   opts.forEach(([v,l])=>{
@@ -208,15 +256,15 @@ const neighbors = {
   "94":["75","92","93","91"],
   "91":["75","92","94","77","78"]
 };
-
 function getAllowedDepartments(myDept, includeNeighbors){
   if(!includeNeighbors) return [myDept];
   return [myDept, ...(neighbors[myDept] || [])];
 }
 
+// Score
 function computeScore(me, other){
   let score=0;
-  score+=25; // département déjà filtré
+  score+=25; // département (filtré)
 
   const diff=Math.abs(me.level-other.level);
   if(diff<=1) score+=25;
@@ -238,6 +286,7 @@ function computeScore(me, other){
   return score;
 }
 
+// Profile load/save
 async function loadProfile(uid){
   const ref=doc(db,"profiles",uid);
   const snap=await getDoc(ref);
@@ -276,11 +325,13 @@ async function saveProfile(uid,existing){
     updated_at:serverTimestamp(),
     created_at:existing?.created_at??serverTimestamp()
   };
+  if(!payload.display_name) throw new Error("Pseudo/Prénom requis.");
+  if(!payload.department) throw new Error("Département requis.");
   await setDoc(doc(db,"profiles",uid),payload,{merge:true});
   return payload;
 }
 
-// Auth actions
+// Auth
 btnSignup.onclick=async()=>{
   try{await createUserWithEmailAndPassword(auth,email.value,password.value);authMsg.textContent="";}
   catch(e){authMsg.textContent=e.message;}
@@ -293,6 +344,7 @@ btnLogout.onclick=()=>signOut(auth);
 
 let currentUser=null, currentProfile=null;
 
+// Save + visible toggle
 btnSave.onclick=async()=>{
   try{
     saveMsg.textContent="Enregistrement...";
@@ -304,9 +356,10 @@ btnToggleActive.onclick=async()=>{
   const v=!(currentProfile?.is_active??true);
   await setDoc(doc(db,"profiles",currentUser.uid),{is_active:v,updated_at:serverTimestamp()},{merge:true});
   currentProfile={...(currentProfile||{}),is_active:v};
-  saveMsg.textContent=v?"Visible":"Invisible";
+  saveMsg.textContent=v?"Visible ✅":"Invisible ✅";
 };
 
+// Matching -> render list with Contact buttons
 btnFind.onclick=async()=>{
   if(!currentProfile){
     results.innerHTML="<p>Complète ton profil.</p>";
@@ -314,37 +367,179 @@ btnFind.onclick=async()=>{
   }
   results.innerHTML="Recherche...";
   const allowed=getAllowedDepartments(currentProfile.department, chkNeighbors.checked);
-  const q=query(collection(db,"profiles"),where("is_active","==",true));
+
+  const q=query(collection(db,"profiles"), where("is_active","==",true));
   const snap=await getDocs(q);
+
   let list=[];
   snap.forEach(d=>{
     if(d.id===currentUser.uid) return;
     const p=d.data();
     if(!allowed.includes(p.department)) return;
     const score=computeScore(currentProfile,p);
-    list.push({id:d.id,...p,score});
+    list.push({id:d.id, ...p, score});
   });
+
   list.sort((a,b)=>b.score-a.score);
-  if(!list.length){results.innerHTML="<p>Aucun binôme trouvé.</p>";return;}
-  results.innerHTML=list.map(p=>`
+
+  if(!list.length){
+    results.innerHTML="<p>Aucun binôme trouvé.</p>";
+    return;
+  }
+
+  results.innerHTML = list.map(p=>`
     <div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:8px">
       <strong>${p.display_name}</strong> – ${p.department}<br>
       Niveau ${p.level} – ${p.objective}<br>
       Score: <strong>${p.score}%</strong><br>
-      <button onclick="alert('Chat bientôt')">Contacter</button>
+      <button class="btnContact" data-uid="${p.id}" data-name="${encodeURIComponent(p.display_name)}">Contacter</button>
     </div>
   `).join("");
+
+  // bind clicks
+  document.querySelectorAll(".btnContact").forEach(btn=>{
+    btn.addEventListener("click", async () => {
+      const otherUid = btn.dataset.uid;
+      const otherName = decodeURIComponent(btn.dataset.name || "");
+      await openChat(otherUid, otherName);
+    });
+  });
 };
 
-onAuthStateChanged(auth,async(user)=>{
-  currentUser=user;
+/* =========================
+   CHAT TEMPS RÉEL
+========================= */
+
+// pair_key stable
+function makePairKey(a,b){
+  return (a < b) ? (a + "_" + b) : (b + "_" + a);
+}
+
+let currentChatId = null;
+let currentOtherUid = null;
+let unsubscribeMessages = null;
+
+async function getOrCreateChat(otherUid){
+  const pair_key = makePairKey(currentUser.uid, otherUid);
+
+  // Cherche chat existant par pair_key
+  const qChat = query(collection(db, "chats"), where("pair_key","==", pair_key), limit(1));
+  const snap = await getDocs(qChat);
+  if(!snap.empty){
+    return { chatId: snap.docs[0].id, chatRef: snap.docs[0].ref };
+  }
+
+  // Sinon crée
+  const chatRef = await addDoc(collection(db,"chats"), {
+    pair_key,
+    participants: [currentUser.uid, otherUid],
+    created_at: serverTimestamp(),
+    last_message_at: null,
+    last_message_preview: "",
+    last_message_sender: ""
+  });
+
+  return { chatId: chatRef.id, chatRef };
+}
+
+function renderMessage(msg){
+  const isMe = msg.sender_id === currentUser.uid;
+  const div = document.createElement("div");
+  div.className = "msg " + (isMe ? "me" : "them");
+  div.textContent = msg.content || "";
+  return div;
+}
+
+async function openChat(otherUid, otherName){
+  currentOtherUid = otherUid;
+  chatWithName.textContent = otherName || "Joueur";
+  chatInfo.textContent = "Connexion au chat...";
+  chatMsg.textContent = "";
+  msgInput.value = "";
+
+  chatSection.classList.remove("hidden");
+
+  // Stop précédent listener
+  if(unsubscribeMessages) unsubscribeMessages();
+
+  const { chatId, chatRef } = await getOrCreateChat(otherUid);
+  currentChatId = chatId;
+
+  chatInfo.textContent = "Chat ID: " + chatId;
+
+  // Real-time listener sur messages
+  const msgsRef = collection(db, "chats", chatId, "messages");
+  const qMsgs = query(msgsRef, orderBy("created_at","asc"));
+
+  messagesEl.innerHTML = "Chargement des messages...";
+  unsubscribeMessages = onSnapshot(qMsgs, (snapshot) => {
+    messagesEl.innerHTML = "";
+    snapshot.forEach(docSnap => {
+      const m = docSnap.data();
+      messagesEl.appendChild(renderMessage(m));
+    });
+    // Scroll en bas
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }, (err) => {
+    chatMsg.textContent = "Erreur écoute messages: " + err.message;
+  });
+
+  // Envoi
+  btnSend.onclick = async () => {
+    const text = msgInput.value.trim();
+    if(!text) return;
+
+    btnSend.disabled = true;
+    chatMsg.textContent = "";
+
+    try{
+      // ajoute message
+      await addDoc(collection(db, "chats", chatId, "messages"), {
+        sender_id: currentUser.uid,
+        content: text,
+        created_at: serverTimestamp(),
+        read_by: [currentUser.uid]
+      });
+
+      // update preview
+      await updateDoc(chatRef, {
+        last_message_at: serverTimestamp(),
+        last_message_preview: text.slice(0, 120),
+        last_message_sender: currentUser.uid
+      });
+
+      msgInput.value = "";
+    }catch(e){
+      chatMsg.textContent = "Erreur envoi: " + e.message;
+    }finally{
+      btnSend.disabled = false;
+    }
+  };
+}
+
+// Close chat
+btnCloseChat.onclick = () => {
+  chatSection.classList.add("hidden");
+  currentChatId = null;
+  currentOtherUid = null;
+  if(unsubscribeMessages) unsubscribeMessages();
+  unsubscribeMessages = null;
+};
+
+// Auth state
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
   if(!user){
-    appView.classList.add("hidden"); authView.classList.remove("hidden");
+    appView.classList.add("hidden");
+    authView.classList.remove("hidden");
+    chatSection.classList.add("hidden");
     return;
   }
-  authView.classList.add("hidden"); appView.classList.remove("hidden");
-  userLine.textContent=`Connecté: ${user.email}`;
-  currentProfile=await loadProfile(user.uid);
+  authView.classList.add("hidden");
+  appView.classList.remove("hidden");
+  userLine.textContent = `Connecté: ${user.email}`;
+
+  currentProfile = await loadProfile(user.uid);
 });
 </script>
 
