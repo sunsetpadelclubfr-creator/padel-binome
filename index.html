@@ -73,6 +73,51 @@
 </div>
 
 <script type="module">
+  async function diagSecurity() {
+  try {
+    // 1) je vérifie que je suis bien connecté
+    const u = auth.currentUser;
+    logDebug("DIAG auth.currentUser", { uid: u?.uid, email: u?.email });
+    if(!u) {
+      authMsg.textContent = "DIAG: pas connecté (auth.currentUser null)";
+      return;
+    }
+
+    // 2) je tente de lire 1 message où je suis participant
+    const q1 = query(
+      collection(db, "messages"),
+      where("participants", "array-contains", u.uid),
+      limit(1)
+    );
+
+    const s1 = await getDocs(q1);
+    logDebug("DIAG query participants array-contains (limit 1)", { size: s1.size });
+
+    if(s1.empty) {
+      authMsg.textContent = "DIAG: aucun message trouvé pour ce compte (normal si nouveau).";
+      return;
+    }
+
+    // 3) je récupère le doc et j'affiche participants
+    const d = s1.docs[0];
+    const data = d.data();
+    logDebug("DIAG first message doc", {
+      docId: d.id,
+      pair_key: data.pair_key,
+      sender_id: data.sender_id,
+      recipient_id: data.recipient_id,
+      participants: data.participants,
+      created_at_ms: data.created_at_ms
+    });
+
+    authMsg.textContent = "DIAG OK: lecture messages autorisée ✅";
+
+  } catch (e) {
+    authMsg.textContent = "DIAG FAIL: " + (e?.message || e) + " | code=" + (e?.code || "");
+    logDebug("DIAG error", e);
+  }
+}
+
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
     getAuth, onAuthStateChanged,
