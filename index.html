@@ -482,22 +482,52 @@ async function openChat(otherUid, otherName, forcedChatId = null){
   );
 
   btnSendEl.onclick = async () => {
-    const text = msgInputEl.value.trim();
-    if(!text) return;
+  const text = msgInputEl.value.trim();
+  if(!text) return;
 
-    btnSendEl.disabled = true;
-    chatMsgEl.textContent = "";
+  btnSendEl.disabled = true;
+  chatMsgEl.textContent = "";
 
-    try{
-      // write message (created_at_ms)
-      await addDoc(collection(db, "messages"), {
-        pair_key: chatId,
-        participants: [currentUser.uid, otherUid],
-        sender_id: currentUser.uid,
-        recipient_id: otherUid,
-        content: text,
-        created_at_ms: Date.now()
-      });
+  try{
+    // 1) Envoi du message (top-level messages)
+    await addDoc(collection(db, "messages"), {
+      pair_key: chatId,
+      participants: [currentUser.uid, otherUid],
+      sender_id: currentUser.uid,
+      recipient_id: otherUid,
+      content: text,
+      created_at_ms: Date.now()
+    });
+
+    // 2) ✅ Mise à jour uniquement de MON inbox (autorisé par les règles)
+    await setDoc(doc(db, "user_inbox", currentUser.uid, "threads", chatId), {
+      other_uid: otherUid,
+      other_name: currentOtherName || "Joueur",
+      last_message_at: serverTimestamp(),
+      last_message_preview: text.slice(0,120),
+      unread: 0
+    }, { merge:true });
+
+    // 3) UI
+    msgInputEl.value = "";
+    await loadInbox();
+
+  }catch(e){
+    // Affichage erreur détaillée
+    const msg =
+      "Erreur envoi: " +
+      (e?.message || e) +
+      " | code=" + (e?.code || "(vide)") +
+      " | name=" + (e?.name || "(vide)") +
+      " | raw=" + JSON.stringify(e, Object.getOwnPropertyNames(e));
+    chatMsgEl.textContent = msg;
+    console.log("SEND ERROR", e);
+    showDebug("Erreur envoi", e);
+  }finally{
+    btnSendEl.disabled = false;
+  }
+};
+
 
       // inbox destinataire (unread +1)
       await setDoc(doc(db, "user_inbox", otherUid, "threads", chatId), {
