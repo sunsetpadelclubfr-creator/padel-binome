@@ -178,6 +178,12 @@ const db = getFirestore(app);
 const authView = document.getElementById("authView");
 const appView = document.getElementById("appView");
 const authMsg = document.getElementById("authMsg");
+  window.addEventListener("error", (e) => {
+  authMsg.textContent = "Erreur JS: " + e.message;
+});
+window.addEventListener("unhandledrejection", (e) => {
+  authMsg.textContent = "Promise rejetée: " + (e.reason?.message || e.reason);
+});
 const saveMsg = document.getElementById("saveMsg");
 const userLine = document.getElementById("userLine");
 const results = document.getElementById("results");
