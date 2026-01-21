@@ -21,8 +21,32 @@
     <div id="authView">
       <input id="email" type="email" placeholder="Email" />
       <input id="password" type="password" placeholder="Mot de passe (min 6)" />
-      <button id="btnLogin">Se connecter</button>
-      <button id="btnSignup">Créer un compte</button>
+      <button id="btnLogin" type="button">Se connecter</button>
+    <button id="btnSignup" type="button">Créer un compte</button>
+    <button id="btnLogout" type="button">Se déconnecter</button>
+      btnLoginEl.addEventListener("click", async (e) => {
+  e.preventDefault();
+  authMsgEl.textContent = "Clic login ✅";
+  try{
+    await signInWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
+    authMsgEl.textContent = "Connecté ✅";
+  }catch(err){
+    authMsgEl.textContent = "Erreur login: " + (err?.message || err);
+    console.log("login error", err);
+  }
+});
+
+btnSignupEl.addEventListener("click", async (e) => {
+  e.preventDefault();
+  authMsgEl.textContent = "Clic signup ✅";
+  try{
+    await createUserWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
+    authMsgEl.textContent = "Compte créé ✅";
+  }catch(err){
+    authMsgEl.textContent = "Erreur signup: " + (err?.message || err);
+    console.log("signup error", err);
+  }
+});
       <p id="authMsg" class="muted"></p>
     </div>
 
