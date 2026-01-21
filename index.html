@@ -20,6 +20,7 @@
     .me{margin-left:auto;background:#e8f5ff}
     .them{margin-right:auto;background:#f1f1f1}
     hr{margin:16px 0}
+    pre{white-space:pre-wrap;background:#111;color:#eee;padding:10px;border-radius:10px;overflow:auto}
   </style>
 </head>
 <body>
@@ -41,7 +42,6 @@
 
   <!-- APP -->
   <div id="appView" class="hidden">
-
     <div class="row">
       <div><p id="userLine" class="muted"></p></div>
       <div><button id="btnLogout">Se déconnecter</button></div>
@@ -92,6 +92,11 @@
           <button id="btnSend">Envoyer</button>
         </div>
         <p id="chatMsg" class="muted"></p>
+
+        <details style="margin-top:10px">
+          <summary>Debug (à copier-coller)</summary>
+          <pre id="debugBox"></pre>
+        </details>
       </div>
     </div>
 
@@ -103,7 +108,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore,
-  doc, getDoc, setDoc, updateDoc, serverTimestamp, increment,
+  doc, getDoc, setDoc, serverTimestamp, increment,
   collection, getDocs, query, where, orderBy,
   addDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -160,14 +165,23 @@ const btnSendEl = document.getElementById("btnSend");
 const btnCloseChatEl = document.getElementById("btnCloseChat");
 const chatMsgEl = document.getElementById("chatMsg");
 
-// Debug visible
+const debugBoxEl = document.getElementById("debugBox");
+
+function showDebug(title, obj){
+  const raw = obj ? JSON.stringify(obj, Object.getOwnPropertyNames(obj), 2) : "";
+  debugBoxEl.textContent = `[${new Date().toISOString()}] ${title}\n${raw}\n`;
+  console.log(title, obj);
+}
+
 window.addEventListener("error", (e) => {
   authMsgEl.textContent = "Erreur JS: " + e.message;
+  showDebug("window.error", e);
 });
 window.addEventListener("unhandledrejection", (e) => {
   authMsgEl.textContent = "Promise rejetée: " + (e.reason?.message || e.reason);
+  showDebug("unhandledrejection", e.reason);
 });
-authMsgEl.textContent = "JS chargé ✅";
+authMsgEl.textContent = "JS chargé ✅ | projectId=" + app.options.projectId;
 
 /* =========================
    State
@@ -186,12 +200,21 @@ let unsubscribeMessages = null;
 function pairKey(a, b){
   return (a < b) ? `${a}_${b}` : `${b}_${a}`;
 }
-
 function renderMsg(m){
   const div = document.createElement("div");
   div.className = "msg " + (m.sender_id === currentUser.uid ? "me" : "them");
   div.textContent = m.content || "";
   return div;
+}
+function showErr(prefix, err){
+  const msg =
+    prefix + ": " +
+    (err?.message || err) +
+    " | code=" + (err?.code || "(vide)") +
+    " | name=" + (err?.name || "(vide)") +
+    " | raw=" + JSON.stringify(err, Object.getOwnPropertyNames(err));
+  chatMsgEl.textContent = msg;
+  showDebug(prefix, err);
 }
 
 /* =========================
@@ -204,6 +227,7 @@ btnSignupEl.onclick = async () => {
     authMsgEl.textContent = "";
   }catch(e){
     authMsgEl.textContent = "Erreur: " + (e.message || e);
+    showDebug("signup.error", e);
   }
 };
 
@@ -214,6 +238,7 @@ btnLoginEl.onclick = async () => {
     authMsgEl.textContent = "";
   }catch(e){
     authMsgEl.textContent = "Erreur: " + (e.message || e);
+    showDebug("login.error", e);
   }
 };
 
@@ -241,7 +266,6 @@ btnSaveEl.onclick = async () => {
     saveMsgEl.textContent = "Pseudo + département requis.";
     return;
   }
-
   saveMsgEl.textContent = "Enregistrement...";
   const patch = {
     display_name,
@@ -264,7 +288,7 @@ btnActiveEl.onclick = async () => {
 };
 
 /* =========================
-   Matching (simple : même département)
+   Matching (simple)
 ========================= */
 btnFindEl.onclick = async () => {
   resultsEl.innerHTML = "Recherche...";
@@ -361,11 +385,41 @@ async function loadInbox(){
   }catch(e){
     inboxEl.innerHTML = "<p>Inbox indisponible.</p>";
     inboxMsgEl.textContent = e.message || String(e);
+    showDebug("inbox.error", e);
   }
 }
 
 /* =========================
-   Chat
+   Debug access (write+read)
+========================= */
+async function debugMessagesAccess(){
+  try{
+    const testKey = "debug_" + currentUser.uid;
+    const ref = await addDoc(collection(db, "messages"), {
+      pair_key: testKey,
+      participants: [currentUser.uid, currentUser.uid],
+      sender_id: currentUser.uid,
+      recipient_id: currentUser.uid,
+      content: "debug",
+      created_at: serverTimestamp()
+    });
+    showDebug("DEBUG write OK id=" + ref.id, null);
+
+    const qTest = query(
+      collection(db, "messages"),
+      where("pair_key", "==", testKey),
+      orderBy("created_at", "asc")
+    );
+    const snap = await getDocs(qTest);
+    showDebug("DEBUG read OK count=" + snap.size, null);
+
+  }catch(e){
+    showErr("DEBUG KO", e);
+  }
+}
+
+/* =========================
+   Chat (messages top-level)
 ========================= */
 async function openChat(otherUid, otherName, forcedChatId = null){
   chatSectionEl.classList.remove("hidden");
@@ -375,67 +429,43 @@ async function openChat(otherUid, otherName, forcedChatId = null){
   messagesEl.innerHTML = "Chargement des messages...";
   msgInputEl.value = "";
 
-  // stop old listener
   if(unsubscribeMessages) unsubscribeMessages();
   unsubscribeMessages = null;
 
   currentOtherUid = otherUid;
   currentOtherName = otherName || "Joueur";
 
-  // chatId + chatRef
   let chatId = forcedChatId;
-  if(!chatId){
-    chatId = pairKey(currentUser.uid, otherUid);
-  }
-  const chatRef = doc(db, "chats", chatId);
-
-  // Create/merge chat doc (ID déterministe)
-  await setDoc(chatRef, {
-    pair_key: chatId,
-    participants: [currentUser.uid, otherUid],
-    created_at: serverTimestamp(),
-    last_message_at: null,
-    last_message_preview: "",
-    last_message_sender: "",
-    ["unread_"+currentUser.uid]: 0,
-    ["unread_"+otherUid]: 0
-  }, { merge: true });
-
+  if(!chatId) chatId = pairKey(currentUser.uid, otherUid);
   currentChatId = chatId;
-  chatInfoEl.textContent = "Chat OK ✅ (ID: " + chatId + ")";
 
-  // REALTIME LISTENER (avec gestion d'erreur)
+  chatInfoEl.textContent = "Chat OK ✅ (pair_key: " + chatId + ")";
+
   const qMsgs = query(
-  collection(db, "messages"),
-  where("pair_key", "==", chatId),
-  orderBy("created_at", "asc")
-);
-
-  messagesEl.innerHTML = "Chargement des messages...";
+    collection(db, "messages"),
+    where("pair_key", "==", chatId),
+    orderBy("created_at", "asc")
+  );
 
   unsubscribeMessages = onSnapshot(
     qMsgs,
     (snap) => {
       messagesEl.innerHTML = "";
-
       if(snap.empty){
         messagesEl.innerHTML = "<div class='muted'>Aucun message pour l’instant.</div>";
         return;
       }
-
-      snap.forEach((d) => {
+      snap.forEach(d => {
         messagesEl.appendChild(renderMsg(d.data()));
       });
-
       messagesEl.scrollTop = messagesEl.scrollHeight;
     },
     (err) => {
       messagesEl.innerHTML = "";
-      chatMsgEl.textContent = "Erreur lecture messages: " + err.message;
+      showErr("Erreur lecture messages", err);
     }
   );
 
-  // Send
   btnSendEl.onclick = async () => {
     const text = msgInputEl.value.trim();
     if(!text) return;
@@ -444,17 +474,17 @@ async function openChat(otherUid, otherName, forcedChatId = null){
     chatMsgEl.textContent = "";
 
     try{
-      // 1) write message
+      // 1) write message (top-level)
       await addDoc(collection(db, "messages"), {
-  pair_key: chatId,
-  participants: [currentUser.uid, otherUid],
-  sender_id: currentUser.uid,
-  recipient_id: otherUid,
-  content: text,
-  created_at: serverTimestamp()
-});
+        pair_key: chatId,
+        participants: [currentUser.uid, otherUid],
+        sender_id: currentUser.uid,
+        recipient_id: otherUid,
+        content: text,
+        created_at: serverTimestamp()
+      });
 
-      // 2) update inbox destinataire (unread +1)
+      // 2) inbox destinataire (unread +1)
       await setDoc(doc(db, "user_inbox", otherUid, "threads", chatId), {
         other_uid: currentUser.uid,
         other_name: currentProfile?.display_name || "Joueur",
@@ -463,7 +493,7 @@ async function openChat(otherUid, otherName, forcedChatId = null){
         unread: increment(1)
       }, { merge:true });
 
-      // 3) update mon inbox (unread = 0)
+      // 3) mon inbox (unread=0)
       await setDoc(doc(db, "user_inbox", currentUser.uid, "threads", chatId), {
         other_uid: otherUid,
         other_name: currentOtherName || "Joueur",
@@ -476,7 +506,7 @@ async function openChat(otherUid, otherName, forcedChatId = null){
       await loadInbox();
 
     }catch(e){
-      chatMsgEl.textContent = "Erreur envoi: " + (e.message || String(e));
+      showErr("Erreur envoi", e);
     }finally{
       btnSendEl.disabled = false;
     }
@@ -509,14 +539,16 @@ onAuthStateChanged(auth, async (user) => {
 
   authView.classList.add("hidden");
   appView.classList.remove("hidden");
-  userLineEl.textContent = `Connecté: ${user.email}`;
+
+  userLineEl.textContent = `Connecté: ${user.email} | uid=${user.uid} | projectId=${app.options.projectId}`;
 
   currentProfile = await loadProfile(user.uid);
   await loadInbox();
+
+  // debug automatique
+  await debugMessagesAccess();
 });
 </script>
 
 </body>
 </html>
-
-
