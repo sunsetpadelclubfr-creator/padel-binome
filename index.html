@@ -174,29 +174,59 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// UI refs
+/* =========================
+   UI refs + DEBUG
+========================= */
 const authView = document.getElementById("authView");
 const appView = document.getElementById("appView");
 const authMsg = document.getElementById("authMsg");
-  window.addEventListener("error", (e) => {
-  authMsg.textContent = "Erreur JS: " + e.message;
-});
-window.addEventListener("unhandledrejection", (e) => {
-  authMsg.textContent = "Promise rejetée: " + (e.reason?.message || e.reason);
-});
 const saveMsg = document.getElementById("saveMsg");
 const userLine = document.getElementById("userLine");
 const results = document.getElementById("results");
+
+const emailEl = document.getElementById("email");
+const passwordEl = document.getElementById("password");
+const btnSignupEl = document.getElementById("btnSignup");
+const btnLoginEl  = document.getElementById("btnLogin");
+const btnLogoutEl = document.getElementById("btnLogout");
+
+const btnSaveEl = document.getElementById("btnSave");
+const btnToggleActiveEl = document.getElementById("btnToggleActive");
+const btnFindEl = document.getElementById("btnFind");
+const chkNeighborsEl = document.getElementById("chkNeighbors");
+
+const displayNameEl = document.getElementById("display_name");
+const departmentEl  = document.getElementById("department");
+const clubEl        = document.getElementById("club");
+const frequencyEl   = document.getElementById("frequency");
+const levelEl       = document.getElementById("level");
+const objectiveEl   = document.getElementById("objective");
+const sidePrefEl    = document.getElementById("side_pref");
+const styleEl       = document.getElementById("style");
+const communicationEl = document.getElementById("communication");
+const mentalEl        = document.getElementById("mental");
 
 const chatSection = document.getElementById("chatSection");
 const chatWithName = document.getElementById("chatWithName");
 const chatInfo = document.getElementById("chatInfo");
 const messagesEl = document.getElementById("messages");
-const msgInput = document.getElementById("msgInput");
-const btnSend = document.getElementById("btnSend");
-const chatMsg = document.getElementById("chatMsg");
+const msgInputEl = document.getElementById("msgInput");
+const btnSendEl = document.getElementById("btnSend");
+const chatMsgEl = document.getElementById("chatMsg");
+const btnCloseChatEl = document.getElementById("btnCloseChat");
 
-// Options
+// Debug visible
+window.addEventListener("error", (e) => {
+  authMsg.textContent = "Erreur JS: " + e.message;
+});
+window.addEventListener("unhandledrejection", (e) => {
+  authMsg.textContent = "Promise rejetée: " + (e.reason?.message || e.reason);
+});
+authMsg.textContent = "JS chargé ✅";
+
+/* =========================
+   Options profil
+========================= */
 const slotsOptions = [
   ["week_evening","Semaine soir"],
   ["weekend","Week-end"],
@@ -213,11 +243,10 @@ const needsOptions = [
 ];
 
 // Build level 1..10
-const levelSel = document.getElementById("level");
 for(let i=1;i<=10;i++){
   const o=document.createElement("option");
   o.value=i;o.textContent="Niveau "+i;
-  levelSel.appendChild(o);
+  levelEl.appendChild(o);
 }
 
 // Chips builder
@@ -253,7 +282,9 @@ document.getElementById("needsWrap").addEventListener("change",()=>{
   }
 });
 
-// Neighbor departments (extrait)
+/* =========================
+   Matching
+========================= */
 const neighbors = {
   "75":["77","78","91","92","93","94","95"],
   "92":["75","78","91","93","94","95"],
@@ -266,7 +297,6 @@ function getAllowedDepartments(myDept, includeNeighbors){
   return [myDept, ...(neighbors[myDept] || [])];
 }
 
-// Score
 function computeScore(me, other){
   let score=0;
   score+=25;
@@ -291,40 +321,42 @@ function computeScore(me, other){
   return score;
 }
 
-// Profile load/save
+/* =========================
+   Profils: load/save
+========================= */
 async function loadProfile(uid){
   const ref=doc(db,"profiles",uid);
   const snap=await getDoc(ref);
   if(!snap.exists()) return null;
   const p=snap.data();
-  display_name.value=p.display_name||"";
-  department.value=p.department||"";
-  club.value=p.club||"";
-  frequency.value=p.frequency||1;
+  displayNameEl.value=p.display_name||"";
+  departmentEl.value=p.department||"";
+  clubEl.value=p.club||"";
+  frequencyEl.value=p.frequency||1;
   setChecked("slotsWrap",p.slots||[]);
-  level.value=p.level||1;
-  objective.value=p.objective||"leisure";
-  side_pref.value=p.side_pref||"either";
-  style.value=p.style||"versatile";
-  communication.value=p.communication||"normal";
-  mental.value=p.mental||"stable";
+  levelEl.value=p.level||1;
+  objectiveEl.value=p.objective||"leisure";
+  sidePrefEl.value=p.side_pref||"either";
+  styleEl.value=p.style||"versatile";
+  communicationEl.value=p.communication||"normal";
+  mentalEl.value=p.mental||"stable";
   setChecked("needsWrap",p.partner_needs||[]);
   return p;
 }
 
 async function saveProfile(uid,existing){
   const payload={
-    display_name:display_name.value.trim(),
-    department:department.value.trim(),
-    club:club.value.trim(),
-    frequency:+frequency.value,
+    display_name:displayNameEl.value.trim(),
+    department:departmentEl.value.trim(),
+    club:clubEl.value.trim(),
+    frequency:+frequencyEl.value,
     slots:getChecked("slotsWrap"),
-    level:+level.value,
-    objective:objective.value,
-    side_pref:side_pref.value,
-    style:style.value,
-    communication:communication.value,
-    mental:mental.value,
+    level:+levelEl.value,
+    objective:objectiveEl.value,
+    side_pref:sidePrefEl.value,
+    style:styleEl.value,
+    communication:communicationEl.value,
+    mental:mentalEl.value,
     partner_needs:getChecked("needsWrap"),
     is_active:existing?.is_active??true,
     updated_at:serverTimestamp(),
@@ -336,28 +368,44 @@ async function saveProfile(uid,existing){
   return payload;
 }
 
-// Auth
-btnSignup.onclick=async()=>{
-  try{await createUserWithEmailAndPassword(auth,email.value,password.value);authMsg.textContent="";}
-  catch(e){authMsg.textContent=e.message;}
+/* =========================
+   AUTH (corrigé)
+========================= */
+btnSignupEl.onclick = async () => {
+  authMsg.textContent = "Création du compte...";
+  try{
+    await createUserWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
+    authMsg.textContent = "";
+  }catch(e){
+    authMsg.textContent = "Erreur: " + (e.message || e);
+  }
 };
-btnLogin.onclick=async()=>{
-  try{await signInWithEmailAndPassword(auth,email.value,password.value);authMsg.textContent="";}
-  catch(e){authMsg.textContent=e.message;}
+
+btnLoginEl.onclick = async () => {
+  authMsg.textContent = "Connexion...";
+  try{
+    await signInWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
+    authMsg.textContent = "";
+  }catch(e){
+    authMsg.textContent = "Erreur: " + (e.message || e);
+  }
 };
-btnLogout.onclick=()=>signOut(auth);
+
+btnLogoutEl.onclick = async () => {
+  await signOut(auth);
+};
 
 let currentUser=null, currentProfile=null;
 
 // Save + visible toggle
-btnSave.onclick=async()=>{
+btnSaveEl.onclick=async()=>{
   try{
     saveMsg.textContent="Enregistrement...";
     currentProfile=await saveProfile(currentUser.uid,currentProfile);
     saveMsg.textContent="Profil enregistré ✅";
   }catch(e){saveMsg.textContent=e.message;}
 };
-btnToggleActive.onclick=async()=>{
+btnToggleActiveEl.onclick=async()=>{
   const v=!(currentProfile?.is_active??true);
   await setDoc(doc(db,"profiles",currentUser.uid),{is_active:v,updated_at:serverTimestamp()},{merge:true});
   currentProfile={...(currentProfile||{}),is_active:v};
@@ -365,13 +413,13 @@ btnToggleActive.onclick=async()=>{
 };
 
 // Matching
-btnFind.onclick=async()=>{
+btnFindEl.onclick=async()=>{
   if(!currentProfile){
     results.innerHTML="<p>Complète ton profil.</p>";
     return;
   }
   results.innerHTML="Recherche...";
-  const allowed=getAllowedDepartments(currentProfile.department, chkNeighbors.checked);
+  const allowed=getAllowedDepartments(currentProfile.department, chkNeighborsEl.checked);
 
   const q=query(collection(db,"profiles"), where("is_active","==",true));
   const snap=await getDocs(q);
@@ -411,14 +459,12 @@ btnFind.onclick=async()=>{
 };
 
 /* =========================
-   CHAT TEMPS RÉEL (avec erreurs visibles)
+   CHAT TEMPS RÉEL
 ========================= */
-
 function makePairKey(a,b){
   return (a < b) ? (a + "_" + b) : (b + "_" + a);
 }
 
-let currentChatId = null;
 let unsubscribeMessages = null;
 
 async function getOrCreateChat(otherUid){
@@ -454,8 +500,8 @@ async function openChat(otherUid, otherName){
   try{
     chatWithName.textContent = otherName || "Joueur";
     chatInfo.textContent = "Connexion au chat...";
-    chatMsg.textContent = "";
-    msgInput.value = "";
+    chatMsgEl.textContent = "";
+    msgInputEl.value = "";
     messagesEl.innerHTML = "";
 
     chatSection.classList.remove("hidden");
@@ -464,8 +510,6 @@ async function openChat(otherUid, otherName){
     unsubscribeMessages = null;
 
     const { chatId, chatRef } = await getOrCreateChat(otherUid);
-    currentChatId = chatId;
-
     chatInfo.textContent = "Chat OK ✅ (ID: " + chatId + ")";
 
     const msgsRef = collection(db, "chats", chatId, "messages");
@@ -480,15 +524,15 @@ async function openChat(otherUid, otherName){
       });
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }, (err) => {
-      chatMsg.textContent = "Erreur écoute messages: " + err.message;
+      chatMsgEl.textContent = "Erreur écoute messages: " + err.message;
     });
 
-    btnSend.onclick = async () => {
-      const text = msgInput.value.trim();
+    btnSendEl.onclick = async () => {
+      const text = msgInputEl.value.trim();
       if(!text) return;
 
-      btnSend.disabled = true;
-      chatMsg.textContent = "";
+      btnSendEl.disabled = true;
+      chatMsgEl.textContent = "";
 
       try{
         await addDoc(collection(db, "chats", chatId, "messages"), {
@@ -504,26 +548,26 @@ async function openChat(otherUid, otherName){
           last_message_sender: currentUser.uid
         });
 
-        msgInput.value = "";
+        msgInputEl.value = "";
       }catch(e){
-        chatMsg.textContent = "Erreur envoi: " + (e.message || e);
+        chatMsgEl.textContent = "Erreur envoi: " + (e.message || e);
       }finally{
-        btnSend.disabled = false;
+        btnSendEl.disabled = false;
       }
     };
 
-  } catch(e){
-  chatInfo.textContent = "Erreur chat ❌";
-  chatMsg.textContent =
-    "message=" + (e?.message || "(vide)") +
-    " | code=" + (e?.code || "(vide)") +
-    " | name=" + (e?.name || "(vide)") +
-    " | raw=" + JSON.stringify(e, Object.getOwnPropertyNames(e));
+  }catch(e){
+    chatInfo.textContent = "Erreur chat ❌";
+    chatMsgEl.textContent =
+      "message=" + (e?.message || "(vide)") +
+      " | code=" + (e?.code || "(vide)") +
+      " | name=" + (e?.name || "(vide)") +
+      " | raw=" + JSON.stringify(e, Object.getOwnPropertyNames(e));
+  }
 }
 
-btnCloseChat.onclick = () => {
+btnCloseChatEl.onclick = () => {
   chatSection.classList.add("hidden");
-  currentChatId = null;
   if(unsubscribeMessages) unsubscribeMessages();
   unsubscribeMessages = null;
 };
