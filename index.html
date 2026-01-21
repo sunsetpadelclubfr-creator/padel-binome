@@ -506,10 +506,13 @@ async function openChat(otherUid, otherName){
       }
     };
 
-  }catch(e){
-    chatInfo.textContent = "Erreur chat ❌";
-    chatMsg.textContent = (e && e.message) ? e.message : String(e);
-  }
+  } catch(e){
+  chatInfo.textContent = "Erreur chat ❌";
+  chatMsg.textContent =
+    "message=" + (e?.message || "(vide)") +
+    " | code=" + (e?.code || "(vide)") +
+    " | name=" + (e?.name || "(vide)") +
+    " | raw=" + JSON.stringify(e, Object.getOwnPropertyNames(e));
 }
 
 btnCloseChat.onclick = () => {
