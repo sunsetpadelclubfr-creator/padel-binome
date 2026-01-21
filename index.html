@@ -486,13 +486,13 @@ unsubscribeMessages = onSnapshot(
     try{
       // 1) write message (top-level)
       await addDoc(collection(db, "messages"), {
-        pair_key: chatId,
-        participants: [currentUser.uid, otherUid],
-        sender_id: currentUser.uid,
-        recipient_id: otherUid,
-        content: text,
-        created_at: serverTimestamp()
-      });
+  pair_key: chatId,
+  participants: [currentUser.uid, otherUid],
+  sender_id: currentUser.uid,
+  recipient_id: otherUid,
+  content: text,
+  created_at: serverTimestamp()
+});
 
       // 2) inbox destinataire (unread +1)
       await setDoc(doc(db, "user_inbox", otherUid, "threads", chatId), {
