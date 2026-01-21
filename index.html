@@ -488,16 +488,63 @@ async function openChat(otherUid, otherName, forcedChatId = null){
   btnSendEl.disabled = true;
   chatMsgEl.textContent = "";
 
-  try{
-    // 1) Envoi du message (top-level messages)
-    await addDoc(collection(db, "messages"), {
-      pair_key: chatId,
-      participants: [currentUser.uid, otherUid],
-      sender_id: currentUser.uid,
-      recipient_id: otherUid,
-      content: text,
-      created_at_ms: Date.now()
-    });
+  // Petit log pour vérifier qu'on est bien connecté
+  console.log("AUTH CHECK", {
+    currentUser_uid: currentUser?.uid,
+    auth_currentUser_uid: auth.currentUser?.uid,
+    otherUid
+  });
+
+  try {
+    // ÉTAPE 1 — écrire le message
+    try {
+      await addDoc(collection(db, "messages"), {
+        pair_key: chatId,
+        participants: [currentUser.uid, otherUid],
+        sender_id: currentUser.uid,
+        recipient_id: otherUid,
+        content: text,
+        created_at_ms: Date.now()
+      });
+      console.log("STEP1 OK: message écrit");
+    } catch (e1) {
+      chatMsgEl.textContent =
+        "Erreur ÉTAPE 1 (addDoc messages): " + (e1?.message || e1) +
+        " | code=" + (e1?.code || "(vide)") +
+        " | raw=" + JSON.stringify(e1, Object.getOwnPropertyNames(e1));
+      console.log("STEP1 ERROR", e1);
+      return; // stop ici
+    }
+
+    // ÉTAPE 2 — écrire MON inbox uniquement (autorisé)
+    try {
+      await setDoc(doc(db, "user_inbox", currentUser.uid, "threads", chatId), {
+        other_uid: otherUid,
+        other_name: currentOtherName || "Joueur",
+        last_message_at: serverTimestamp(),
+        last_message_preview: text.slice(0, 120),
+        unread: 0
+      }, { merge: true });
+      console.log("STEP2 OK: inbox perso écrite");
+    } catch (e2) {
+      chatMsgEl.textContent =
+        "Erreur ÉTAPE 2 (setDoc user_inbox moi): " + (e2?.message || e2) +
+        " | code=" + (e2?.code || "(vide)") +
+        " | raw=" + JSON.stringify(e2, Object.getOwnPropertyNames(e2));
+      console.log("STEP2 ERROR", e2);
+      return; // stop ici
+    }
+
+    // ÉTAPE 3 — UI
+    msgInputEl.value = "";
+    await loadInbox();
+    chatMsgEl.textContent = ""; // pas d'erreur
+
+  } finally {
+    btnSendEl.disabled = false;
+  }
+};
+
 
     // 2) ✅ Mise à jour uniquement de MON inbox (autorisé par les règles)
     await setDoc(doc(db, "user_inbox", currentUser.uid, "threads", chatId), {
