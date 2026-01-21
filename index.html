@@ -469,23 +469,18 @@ let unsubscribeMessages = null;
 
 async function getOrCreateChat(otherUid){
   const pair_key = makePairKey(currentUser.uid, otherUid);
+  const chatRef = doc(db, "chats", pair_key);
 
-  const qChat = query(collection(db, "chats"), where("pair_key","==", pair_key), limit(1));
-  const snap = await getDocs(qChat);
-  if(!snap.empty){
-    return { chatId: snap.docs[0].id, chatRef: snap.docs[0].ref };
-  }
-
-  const chatRef = await addDoc(collection(db,"chats"), {
+  await setDoc(chatRef, {
     pair_key,
     participants: [currentUser.uid, otherUid],
     created_at: serverTimestamp(),
     last_message_at: null,
     last_message_preview: "",
     last_message_sender: ""
-  });
+  }, { merge: true });
 
-  return { chatId: chatRef.id, chatRef };
+  return { chatId: pair_key, chatRef };
 }
 
 function renderMessage(msg){
