@@ -3,70 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Test Supabase</title>
+  <title>Diag réseau</title>
   <style>
-    body { font-family: system-ui, Arial; padding: 20px; }
-    button { padding: 12px 16px; font-size: 16px; }
-    pre { background: #f5f5f5; padding: 12px; border-radius: 8px; }
+    body{font-family:system-ui;margin:16px}
+    button{padding:12px 16px;font-size:16px}
+    pre{white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:10px}
   </style>
 </head>
 <body>
+  <h2>Diagnostic "Failed to fetch"</h2>
+  <button id="go">Lancer les tests</button>
+  <pre id="out"></pre>
 
-  <h2>Test connexion Supabase</h2>
-  <button id="testBtn">Tester Supabase</button>
-  <pre id="out">Chargement...</pre>
+<script>
+  const SUPABASE_URL = "https://ainxaodlvxokhafmnbf.supabase.co";
 
-  <!-- Librairie Supabase -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  const out = document.getElementById("out");
+  const log = (m) => out.textContent += m + "\n";
 
-  <!-- Ton JS -->
-  <script>
-    const SUPABASE_URL = "https://ainxaodlvxokhafmnbf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpbnhhYW9sZHZ4b2toYWZtbmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5NjU1OTYsImV4cCI6MjA4NDU0MTU5Nn0.aZQhsO7ee4W-TdSLP9ogPkwwinEc_JJCS-iuZnzVJPQ";
-
-    const out = document.getElementById("out");
-    function log(txt) {
-      out.textContent += txt + "\n";
+  async function testFetch(name, url, opts){
+    log("\n--- " + name + " ---");
+    log("URL: " + url);
+    try{
+      const r = await fetch(url, opts);
+      log("STATUS: " + r.status);
+      const txt = await r.text();
+      log("BODY (début): " + txt.slice(0, 160));
+    }catch(e){
+      log("FAILED ❌ " + (e.message || e));
     }
+  }
 
+  document.getElementById("go").onclick = async () => {
     out.textContent = "";
-    log("Page chargée.");
+    log("UserAgent: " + navigator.userAgent);
 
-    if (!window.supabase) {
-      log("ERREUR : librairie Supabase non chargée ❌");
-    } else {
-      log("Librairie Supabase chargée ✅");
-    }
+    // Test A : un site public très accessible (sert de contrôle)
+    await testFetch("A) contrôle internet", "https://example.com/");
 
-    let supabaseClient;
-    try {
-      supabaseClient = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-      );
-      log("Client Supabase créé ✅");
-    } catch (e) {
-      log("Erreur création client ❌ " + e.message);
-    }
+    // Test B : endpoint santé Supabase (pas besoin de clé)
+    await testFetch("B) supabase health", SUPABASE_URL + "/auth/v1/health");
 
-    document.getElementById("testBtn").onclick = async () => {
-      log("\nTest requête...");
-      try {
-        const { data, error } = await supabaseClient
-          .from("profiles")
-          .select("id")
-          .limit(1);
-
-        if (error) throw error;
-
-        log("Requête OK ✅");
-        log("Résultat: " + JSON.stringify(data));
-      } catch (e) {
-        log("ERREUR requête ❌");
-        log(e.message || JSON.stringify(e));
-      }
-    };
-  </script>
-
+    // Test C : endpoint REST (sans clé -> peut renvoyer 401/404, c'est OK)
+    await testFetch("C) supabase rest root", SUPABASE_URL + "/rest/v1/");
+  };
+</script>
 </body>
 </html>
