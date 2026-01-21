@@ -398,13 +398,13 @@ async function debugMessagesAccess(){
 
     // test write
     const ref = await addDoc(collection(db, "messages"), {
-      pair_key: testKey,
-      participants: [currentUser.uid, currentUser.uid],
-      sender_id: currentUser.uid,
-      recipient_id: currentUser.uid,
-      content: "debug",
-      created_at: serverTimestamp()
-    });
+  pair_key: chatId,
+  participants: [currentUser.uid, otherUid],
+  sender_id: currentUser.uid,
+  recipient_id: otherUid,
+  content: text,
+  created_at: serverTimestamp()
+});
     showDebug("DEBUG write OK id=" + ref.id, null);
 
     // test read query (avec orderBy)
