@@ -1,10 +1,18 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src *; img-src * data: blob:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval';">
   <meta charset="utf-8">
+  <title>Diagnostic réseau</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Diag réseau</title>
+
+  <!-- CSP très permissive pour éviter tout blocage -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
+                 connect-src *;
+                 img-src * data: blob:;
+                 style-src * 'unsafe-inline';
+                 script-src * 'unsafe-inline' 'unsafe-eval';">
+
   <style>
     body{font-family:system-ui;margin:16px}
     button{padding:12px 16px;font-size:16px}
@@ -12,7 +20,7 @@
   </style>
 </head>
 <body>
-  <h2>Diagnostic "Failed to fetch"</h2>
+  <h2>Diagnostic “Failed to fetch”</h2>
   <button id="go">Lancer les tests</button>
   <pre id="out"></pre>
 
@@ -22,11 +30,11 @@
   const out = document.getElementById("out");
   const log = (m) => out.textContent += m + "\n";
 
-  async function testFetch(name, url, opts){
+  async function testFetch(name, url){
     log("\n--- " + name + " ---");
     log("URL: " + url);
     try{
-      const r = await fetch(url, opts);
+      const r = await fetch(url);
       log("STATUS: " + r.status);
       const txt = await r.text();
       log("BODY (début): " + txt.slice(0, 160));
@@ -37,15 +45,17 @@
 
   document.getElementById("go").onclick = async () => {
     out.textContent = "";
+    log("Location: " + window.location.href);
+    log("Protocol: " + window.location.protocol);
     log("UserAgent: " + navigator.userAgent);
 
-    // Test A : un site public très accessible (sert de contrôle)
+    // Test A : contrôle internet
     await testFetch("A) contrôle internet", "https://example.com/");
 
-    // Test B : endpoint santé Supabase (pas besoin de clé)
+    // Test B : supabase health
     await testFetch("B) supabase health", SUPABASE_URL + "/auth/v1/health");
 
-    // Test C : endpoint REST (sans clé -> peut renvoyer 401/404, c'est OK)
+    // Test C : supabase rest root
     await testFetch("C) supabase rest root", SUPABASE_URL + "/rest/v1/");
   };
 </script>
