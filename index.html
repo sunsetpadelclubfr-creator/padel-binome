@@ -406,9 +406,10 @@ async function openChat(otherUid, otherName, forcedChatId = null){
 
   // REALTIME LISTENER (avec gestion d'erreur)
   const qMsgs = query(
-    collection(db, "chats", chatId, "messages"),
-    orderBy("created_at", "asc")
-  );
+  collection(db, "messages"),
+  where("pair_key", "==", chatId),
+  orderBy("created_at", "asc")
+);
 
   messagesEl.innerHTML = "Chargement des messages...";
 
@@ -444,13 +445,14 @@ async function openChat(otherUid, otherName, forcedChatId = null){
 
     try{
       // 1) write message
-      await addDoc(collection(db, "chats", chatId, "messages"), {
-        sender_id: currentUser.uid,
-        recipient_id: otherUid,
-        content: text,
-        created_at: serverTimestamp(),
-        read_by: [currentUser.uid]
-      });
+      await addDoc(collection(db, "messages"), {
+  pair_key: chatId,
+  participants: [currentUser.uid, otherUid],
+  sender_id: currentUser.uid,
+  recipient_id: otherUid,
+  content: text,
+  created_at: serverTimestamp()
+});
 
       // 2) update inbox destinataire (unread +1)
       await setDoc(doc(db, "user_inbox", otherUid, "threads", chatId), {
