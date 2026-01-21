@@ -1,141 +1,542 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Test Auth Firebase</title>
+  <meta charset="utf-8">
+  <title>Padel Binôme</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body{font-family:system-ui;margin:16px}
-    .card{max-width:560px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
-    input,button{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
+    .card{max-width:980px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:16px}
+    input,button,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
     button{cursor:pointer}
-    .muted{color:#666;font-size:14px}
+    .row{display:flex;gap:10px}
+    .row>*{flex:1}
     .hidden{display:none}
-    pre{background:#111;color:#eee;padding:10px;border-radius:10px;white-space:pre-wrap}
+    .muted{color:#666;font-size:14px}
+    .badge{display:inline-block;border:1px solid #ccc;border-radius:999px;padding:2px 8px;font-size:12px}
+    .box{border:1px solid #ddd;border-radius:12px;padding:12px;margin:10px 0}
+    .messages{height:340px;overflow:auto;border:1px solid #eee;border-radius:10px;padding:10px;background:#fafafa}
+    .msg{max-width:75%;padding:8px 10px;border-radius:12px;margin:6px 0;white-space:pre-wrap}
+    .me{margin-left:auto;background:#e8f5ff}
+    .them{margin-right:auto;background:#f1f1f1}
+    hr{margin:16px 0}
+    pre{white-space:pre-wrap;background:#111;color:#eee;padding:10px;border-radius:10px;overflow:auto}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Test Auth Firebase</h2>
 
-    <div id="authView">
-      <input id="email" type="email" placeholder="Email" />
-      <input id="password" type="password" placeholder="Mot de passe (min 6)" />
+<div class="card">
+  <h2>Padel Binôme</h2>
+
+  <!-- AUTH -->
+  <div id="authView">
+    <h3>Connexion / Inscription</h3>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Mot de passe (min 6)">
+    <div class="row">
       <button id="btnLogin" type="button">Se connecter</button>
-    <button id="btnSignup" type="button">Créer un compte</button>
-    <button id="btnLogout" type="button">Se déconnecter</button>
-      btnLoginEl.addEventListener("click", async (e) => {
+      <button id="btnSignup" type="button">Créer un compte</button>
+    </div>
+    <p id="authMsg" class="muted"></p>
+  </div>
+
+  <!-- APP -->
+  <div id="appView" class="hidden">
+
+    <div class="row">
+      <div><p id="userLine" class="muted"></p></div>
+      <div><button id="btnLogout" type="button">Se déconnecter</button></div>
+    </div>
+
+    <hr>
+
+    <h3>Mon profil</h3>
+    <div class="box">
+      <input id="display_name" placeholder="Pseudo / Prénom">
+      <input id="department" placeholder="Département (ex: 75)">
+      <div class="row">
+        <button id="btnSave" type="button">Enregistrer</button>
+        <button id="btnActive" type="button">Visible / Invisible</button>
+      </div>
+      <p id="saveMsg" class="muted"></p>
+    </div>
+
+    <h3>Trouver un binôme (même département)</h3>
+    <div class="box">
+      <button id="btnFind" type="button">Rechercher</button>
+      <div id="results"></div>
+    </div>
+
+    <h3>Mes conversations</h3>
+    <div class="box">
+      <button id="btnRefreshInbox" type="button">Rafraîchir</button>
+      <div id="inbox"></div>
+      <p id="inboxMsg" class="muted"></p>
+    </div>
+
+    <hr>
+
+    <div id="chatSection" class="hidden">
+      <h3>Chat</h3>
+      <div class="box">
+        <div class="row">
+          <div>
+            <strong id="chatWithName">—</strong><br>
+            <span id="chatInfo" class="muted">—</span>
+          </div>
+          <div><button id="btnCloseChat" type="button">Fermer</button></div>
+        </div>
+
+        <div id="messages" class="messages">—</div>
+
+        <div class="row" style="margin-top:8px">
+          <textarea id="msgInput" rows="2" placeholder="Écris ton message..."></textarea>
+          <button id="btnSend" type="button">Envoyer</button>
+        </div>
+
+        <p id="chatMsg" class="muted"></p>
+
+        <details style="margin-top:10px">
+          <summary>Debug (à copier-coller)</summary>
+          <pre id="debugBox"></pre>
+        </details>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc, getDoc, setDoc, serverTimestamp,
+  collection, getDocs, query, where, orderBy, limit,
+  addDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* =========================
+   Firebase config
+========================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
+  authDomain: "padel-binome.firebaseapp.com",
+  projectId: "padel-binome",
+  storageBucket: "padel-binome.firebasestorage.app",
+  messagingSenderId: "968501656511",
+  appId: "1:968501656511:web:464dca20866e202d53ff0a"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* =========================
+   UI refs
+========================= */
+const authView = document.getElementById("authView");
+const appView = document.getElementById("appView");
+const authMsgEl = document.getElementById("authMsg");
+
+const emailEl = document.getElementById("email");
+const passwordEl = document.getElementById("password");
+const btnLoginEl = document.getElementById("btnLogin");
+const btnSignupEl = document.getElementById("btnSignup");
+const btnLogoutEl = document.getElementById("btnLogout");
+const userLineEl = document.getElementById("userLine");
+
+const displayNameEl = document.getElementById("display_name");
+const departmentEl = document.getElementById("department");
+const btnSaveEl = document.getElementById("btnSave");
+const btnActiveEl = document.getElementById("btnActive");
+const saveMsgEl = document.getElementById("saveMsg");
+
+const btnFindEl = document.getElementById("btnFind");
+const resultsEl = document.getElementById("results");
+
+const btnRefreshInboxEl = document.getElementById("btnRefreshInbox");
+const inboxEl = document.getElementById("inbox");
+const inboxMsgEl = document.getElementById("inboxMsg");
+
+const chatSectionEl = document.getElementById("chatSection");
+const chatWithNameEl = document.getElementById("chatWithName");
+const chatInfoEl = document.getElementById("chatInfo");
+const messagesEl = document.getElementById("messages");
+const msgInputEl = document.getElementById("msgInput");
+const btnSendEl = document.getElementById("btnSend");
+const btnCloseChatEl = document.getElementById("btnCloseChat");
+const chatMsgEl = document.getElementById("chatMsg");
+
+const debugBoxEl = document.getElementById("debugBox");
+
+/* =========================
+   Debug helpers
+========================= */
+function showDebug(title, obj){
+  const raw = obj ? JSON.stringify(obj, Object.getOwnPropertyNames(obj), 2) : "";
+  debugBoxEl.textContent = `[${new Date().toISOString()}] ${title}\n${raw}\n`;
+  console.log(title, obj);
+}
+function showErr(prefix, err, targetEl = chatMsgEl){
+  const msg =
+    prefix + ": " +
+    (err?.message || err) +
+    " | code=" + (err?.code || "(vide)") +
+    " | name=" + (err?.name || "(vide)") +
+    " | raw=" + JSON.stringify(err, Object.getOwnPropertyNames(err));
+  targetEl.textContent = msg;
+  showDebug(prefix, err);
+}
+
+window.addEventListener("error", (e) => showErr("Erreur JS", e, authMsgEl));
+window.addEventListener("unhandledrejection", (e) => showErr("Promise rejetée", e.reason, authMsgEl));
+
+authMsgEl.textContent = "JS chargé ✅ | projectId=" + app.options.projectId;
+
+/* =========================
+   State
+========================= */
+let currentUser = null;
+let currentProfile = null;
+
+let currentChatId = null;
+let currentOtherUid = null;
+let currentOtherName = null;
+let unsubscribeMessages = null;
+
+/* =========================
+   Helpers
+========================= */
+function pairKey(a, b){
+  return (a < b) ? `${a}_${b}` : `${b}_${a}`;
+}
+function renderMsg(m){
+  const div = document.createElement("div");
+  div.className = "msg " + (m.sender_id === currentUser.uid ? "me" : "them");
+  div.textContent = m.content || "";
+  return div;
+}
+
+/* =========================
+   AUTH handlers (robustes)
+========================= */
+btnLoginEl.addEventListener("click", async (e) => {
   e.preventDefault();
-  authMsgEl.textContent = "Clic login ✅";
+  authMsgEl.textContent = "Connexion...";
   try{
     await signInWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
-    authMsgEl.textContent = "Connecté ✅";
+    authMsgEl.textContent = "";
   }catch(err){
-    authMsgEl.textContent = "Erreur login: " + (err?.message || err);
-    console.log("login error", err);
+    showErr("Erreur login", err, authMsgEl);
   }
 });
 
 btnSignupEl.addEventListener("click", async (e) => {
   e.preventDefault();
-  authMsgEl.textContent = "Clic signup ✅";
+  authMsgEl.textContent = "Création du compte...";
   try{
     await createUserWithEmailAndPassword(auth, emailEl.value.trim(), passwordEl.value);
-    authMsgEl.textContent = "Compte créé ✅";
+    authMsgEl.textContent = "";
   }catch(err){
-    authMsgEl.textContent = "Erreur signup: " + (err?.message || err);
-    console.log("signup error", err);
+    showErr("Erreur signup", err, authMsgEl);
   }
 });
-      <p id="authMsg" class="muted"></p>
-    </div>
 
-    <div id="appView" class="hidden">
-      <p id="userLine" class="muted"></p>
-      <button id="btnLogout">Se déconnecter</button>
+btnLogoutEl.addEventListener("click", async (e) => {
+  e.preventDefault();
+  await signOut(auth);
+});
 
-      <details style="margin-top:10px">
-        <summary>Debug</summary>
-        <pre id="debug"></pre>
-      </details>
-    </div>
-  </div>
-alert("JS chargé ✅");
-<script type="module">
-  
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import {
-    getAuth, onAuthStateChanged,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut
-  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+/* =========================
+   Profile load/save
+========================= */
+async function loadProfile(uid){
+  const snap = await getDoc(doc(db, "profiles", uid));
+  if(!snap.exists()) return null;
+  const p = snap.data();
+  displayNameEl.value = p.display_name || "";
+  departmentEl.value = p.department || "";
+  return p;
+}
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
-    authDomain: "padel-binome.firebaseapp.com",
-    projectId: "padel-binome",
-    storageBucket: "padel-binome.firebasestorage.app",
-    messagingSenderId: "968501656511",
-    appId: "1:968501656511:web:464dca20866e202d53ff0a"
-  };
+btnSaveEl.addEventListener("click", async () => {
+  if(!currentUser) return;
+  const display_name = displayNameEl.value.trim();
+  const department = departmentEl.value.trim();
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  const authView = document.getElementById("authView");
-  const appView  = document.getElementById("appView");
-  const emailEl  = document.getElementById("email");
-  const passEl   = document.getElementById("password");
-  const msgEl    = document.getElementById("authMsg");
-  const userLine = document.getElementById("userLine");
-  const dbg      = document.getElementById("debug");
-
-  function debug(title, obj){
-    dbg.textContent = `[${new Date().toISOString()}] ${title}\n` +
-      JSON.stringify(obj, Object.getOwnPropertyNames(obj), 2);
-    console.log(title, obj);
+  if(!display_name || !department){
+    saveMsgEl.textContent = "Pseudo + département requis.";
+    return;
   }
 
-  window.addEventListener("error", (e)=>{ msgEl.textContent = "Erreur JS: " + e.message; debug("window.error", e); });
-  window.addEventListener("unhandledrejection", (e)=>{ msgEl.textContent = "Promise: " + (e.reason?.message||e.reason); debug("unhandledrejection", e.reason); });
-
-  document.getElementById("btnSignup").onclick = async () => {
-    msgEl.textContent = "Création...";
-    try{
-      await createUserWithEmailAndPassword(auth, emailEl.value.trim(), passEl.value);
-      msgEl.textContent = "Compte créé ✅";
-    }catch(e){
-      msgEl.textContent = "Erreur: " + (e.message || e);
-      debug("signup.error", e);
-    }
+  saveMsgEl.textContent = "Enregistrement...";
+  const patch = {
+    display_name,
+    department,
+    is_active: currentProfile?.is_active ?? true,
+    updated_at: serverTimestamp(),
+    created_at: currentProfile?.created_at ?? serverTimestamp()
   };
+  await setDoc(doc(db, "profiles", currentUser.uid), patch, { merge:true });
+  currentProfile = { ...(currentProfile||{}), ...patch };
+  saveMsgEl.textContent = "Profil enregistré ✅";
+});
 
-  document.getElementById("btnLogin").onclick = async () => {
-    msgEl.textContent = "Connexion...";
-    try{
-      await signInWithEmailAndPassword(auth, emailEl.value.trim(), passEl.value);
-      msgEl.textContent = "Connecté ✅";
-    }catch(e){
-      msgEl.textContent = "Erreur: " + (e.message || e);
-      debug("login.error", e);
-    }
-  };
+btnActiveEl.addEventListener("click", async () => {
+  if(!currentUser) return;
+  const next = !(currentProfile?.is_active ?? true);
+  await setDoc(doc(db, "profiles", currentUser.uid), { is_active: next, updated_at: serverTimestamp() }, { merge:true });
+  currentProfile = { ...(currentProfile||{}), is_active: next };
+  saveMsgEl.textContent = next ? "Visible ✅" : "Invisible ✅";
+});
 
-  document.getElementById("btnLogout").onclick = async () => {
-    await signOut(auth);
-  };
+/* =========================
+   Matching simple
+========================= */
+btnFindEl.addEventListener("click", async () => {
+  resultsEl.innerHTML = "Recherche...";
+  if(!currentProfile?.department){
+    resultsEl.innerHTML = "<p>Complète ton profil (département).</p>";
+    return;
+  }
 
-  onAuthStateChanged(auth, (user)=>{
-    if(!user){
-      appView.classList.add("hidden");
-      authView.classList.remove("hidden");
+  const q = query(collection(db, "profiles"), where("is_active", "==", true));
+  const snap = await getDocs(q);
+
+  let html = "";
+  snap.forEach(d => {
+    if(d.id === currentUser.uid) return;
+    const p = d.data();
+    if((p.department || "") !== currentProfile.department) return;
+
+    html += `
+      <div class="box" style="margin:8px 0">
+        <strong>${p.display_name || "Joueur"}</strong> — ${p.department}
+        <button class="btnContact" type="button"
+          data-uid="${d.id}"
+          data-name="${encodeURIComponent(p.display_name||"Joueur")}">
+          Contacter
+        </button>
+      </div>
+    `;
+  });
+
+  resultsEl.innerHTML = html || "<p>Aucun résultat.</p>";
+
+  document.querySelectorAll(".btnContact").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const otherUid = btn.dataset.uid;
+      const otherName = decodeURIComponent(btn.dataset.name || "Joueur");
+      await openChat(otherUid, otherName);
+    });
+  });
+});
+
+/* =========================
+   Inbox calculée depuis messages (pas d'écriture inbox)
+   - On récupère les derniers messages où je suis participant
+   - On regroupe par pair_key
+========================= */
+async function loadInboxFromMessages(){
+  inboxMsgEl.textContent = "";
+  inboxEl.innerHTML = "Chargement...";
+
+  try{
+    // On prend les derniers messages (ex: 80) et on regroupe côté client
+    const qLast = query(
+      collection(db, "messages"),
+      where("participants", "array-contains", currentUser.uid),
+      orderBy("created_at_ms", "desc"),
+      limit(80)
+    );
+
+    const snap = await getDocs(qLast);
+    if(snap.empty){
+      inboxEl.innerHTML = "<p>Aucune conversation.</p>";
       return;
     }
-    authView.classList.add("hidden");
-    appView.classList.remove("hidden");
-    userLine.textContent = `Connecté: ${user.email} | uid=${user.uid} | projectId=${app.options.projectId}`;
-  });
+
+    const byChat = new Map(); // chatId -> lastMessage
+    snap.forEach(d => {
+      const m = d.data();
+      const chatId = m.pair_key;
+      if(!chatId) return;
+      if(!byChat.has(chatId)){
+        byChat.set(chatId, m); // premier = plus récent (desc)
+      }
+    });
+
+    // Render
+    let html = "";
+    for(const [chatId, m] of byChat.entries()){
+      const otherUid = (m.sender_id === currentUser.uid) ? m.recipient_id : m.sender_id;
+      const otherName = await resolveName(otherUid);
+
+      html += `
+        <div class="box" style="margin:8px 0">
+          <strong>${otherName}</strong>
+          <br><span class="muted">${(m.content || "").slice(0,120)}</span><br>
+          <button class="btnOpenChat" type="button"
+            data-chat="${chatId}"
+            data-other="${otherUid}"
+            data-name="${encodeURIComponent(otherName)}">
+            Ouvrir
+          </button>
+        </div>
+      `;
+    }
+
+    inboxEl.innerHTML = html || "<p>Aucune conversation.</p>";
+
+    document.querySelectorAll(".btnOpenChat").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const chatId = btn.dataset.chat;
+        const otherUid = btn.dataset.other;
+        const otherName = decodeURIComponent(btn.dataset.name || "Joueur");
+        await openChat(otherUid, otherName, chatId);
+      });
+    });
+
+  }catch(e){
+    inboxEl.innerHTML = "<p>Inbox indisponible.</p>";
+    showErr("Erreur inbox", e, inboxMsgEl);
+  }
+}
+
+btnRefreshInboxEl.addEventListener("click", loadInboxFromMessages);
+
+/* Cache nom des joueurs */
+const nameCache = new Map();
+async function resolveName(uid){
+  if(nameCache.has(uid)) return nameCache.get(uid);
+  try{
+    const snap = await getDoc(doc(db, "profiles", uid));
+    const name = snap.exists() ? (snap.data().display_name || uid) : uid;
+    nameCache.set(uid, name);
+    return name;
+  }catch{
+    return uid;
+  }
+}
+
+/* =========================
+   Chat temps réel
+========================= */
+async function openChat(otherUid, otherName, forcedChatId = null){
+  chatSectionEl.classList.remove("hidden");
+  chatWithNameEl.textContent = otherName || "Joueur";
+  chatInfoEl.textContent = "Connexion...";
+  chatMsgEl.textContent = "";
+  messagesEl.innerHTML = "Chargement des messages...";
+  msgInputEl.value = "";
+
+  if(unsubscribeMessages) unsubscribeMessages();
+  unsubscribeMessages = null;
+
+  currentOtherUid = otherUid;
+  currentOtherName = otherName || "Joueur";
+
+  let chatId = forcedChatId;
+  if(!chatId) chatId = pairKey(currentUser.uid, otherUid);
+  currentChatId = chatId;
+
+  chatInfoEl.textContent = "Chat OK ✅ (pair_key: " + chatId + ")";
+
+  // Requête compatible rules + index
+  const qMsgs = query(
+    collection(db, "messages"),
+    where("participants", "array-contains", currentUser.uid),
+    where("pair_key", "==", chatId),
+    orderBy("created_at_ms", "asc")
+  );
+
+  unsubscribeMessages = onSnapshot(
+    qMsgs,
+    (snap) => {
+      messagesEl.innerHTML = "";
+      if(snap.empty){
+        messagesEl.innerHTML = "<div class='muted'>Aucun message pour l’instant.</div>";
+        return;
+      }
+      snap.forEach(d => messagesEl.appendChild(renderMsg(d.data())));
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+    (err) => {
+      messagesEl.innerHTML = "";
+      showErr("Erreur lecture messages", err);
+    }
+  );
+
+  // Envoi
+  btnSendEl.onclick = async () => {
+    const text = msgInputEl.value.trim();
+    if(!text) return;
+
+    btnSendEl.disabled = true;
+    chatMsgEl.textContent = "";
+
+    try{
+      await addDoc(collection(db, "messages"), {
+        pair_key: chatId,
+        participants: [currentUser.uid, otherUid],
+        sender_id: currentUser.uid,
+        recipient_id: otherUid,
+        content: text,
+        created_at_ms: Date.now()
+      });
+
+      msgInputEl.value = "";
+      // Inbox calculée => pas besoin d'écrire quoi que ce soit
+      await loadInboxFromMessages();
+
+    }catch(e){
+      showErr("Erreur envoi", e);
+    }finally{
+      btnSendEl.disabled = false;
+    }
+  };
+}
+
+btnCloseChatEl.addEventListener("click", () => {
+  chatSectionEl.classList.add("hidden");
+  chatMsgEl.textContent = "";
+  messagesEl.innerHTML = "";
+  currentChatId = null;
+  currentOtherUid = null;
+  currentOtherName = null;
+  if(unsubscribeMessages) unsubscribeMessages();
+  unsubscribeMessages = null;
+});
+
+/* =========================
+   Auth state
+========================= */
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+
+  if(!user){
+    appView.classList.add("hidden");
+    authView.classList.remove("hidden");
+    chatSectionEl.classList.add("hidden");
+    return;
+  }
+
+  authView.classList.add("hidden");
+  appView.classList.remove("hidden");
+
+  userLineEl.textContent =
+    `Connecté: ${user.email} | uid=${user.uid} | projectId=${app.options.projectId}`;
+
+  currentProfile = await loadProfile(user.uid);
+
+  // Inbox calculée
+  await loadInboxFromMessages();
+});
 </script>
+
 </body>
 </html>
