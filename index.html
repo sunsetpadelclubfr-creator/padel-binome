@@ -356,12 +356,15 @@ aasync function loadInboxFromMessages(){
   const uid = u.uid;
 
   try{
-    const qLast = query(
-      collection(db, "messages"),
-      where("participants", "array-contains", uid),
-      orderBy("created_at_ms", "desc"),
-      limit(80)
-    );
+    const min = Date.now() - (90 * 24 * 60 * 60 * 1000); // 90 jours
+
+const qLast = query(
+  collection(db, "messages"),
+  where("participants", "array-contains", uid),
+  where("created_at_ms", ">", min),
+  orderBy("created_at_ms", "desc"),
+  limit(80)
+);
 
     const snap = await getDocs(qLast);
     if(snap.empty){
