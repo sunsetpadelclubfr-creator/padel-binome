@@ -238,7 +238,8 @@
     authView.classList.add("hidden");
     appView.classList.remove("hidden");
     userLine.textContent = `Connecté: ${u.email} | uid=${u.uid} | projectId=${app.options.projectId}`;
-
+  await diagSecurity();
+    
     // charge profil
     const snap = await getDoc(doc(db,"profiles",u.uid));
     if(snap.exists()){
