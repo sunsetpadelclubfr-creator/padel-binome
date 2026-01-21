@@ -442,10 +442,11 @@ async function openChat(otherUid, otherName, forcedChatId = null){
   chatInfoEl.textContent = "Chat OK ✅ (pair_key: " + chatId + ")";
 
   const qMsgs = query(
-    collection(db, "messages"),
-    where("pair_key", "==", chatId),
-    orderBy("created_at", "asc")
-  );
+  collection(db, "messages"),
+  where("participants", "array-contains", currentUser.uid),
+  where("pair_key", "==", chatId),
+  orderBy("created_at", "asc")
+);
 
   unsubscribeMessages = onSnapshot(
     qMsgs,
