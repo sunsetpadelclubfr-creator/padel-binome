@@ -523,7 +523,7 @@ async function openChat(otherUid, otherName){
     });
 
     btnSendEl.onclick = async () => {
-      const text = msgInputEl.value.trim();
+      const recipientId = otherUid; // celui avec qui tu chats
       if(!text) return;
 
       btnSendEl.disabled = true;
@@ -531,11 +531,12 @@ async function openChat(otherUid, otherName){
 
       try{
         await addDoc(collection(db, "chats", chatId, "messages"), {
-          sender_id: currentUser.uid,
-          content: text,
-          created_at: serverTimestamp(),
-          read_by: [currentUser.uid]
-        });
+  sender_id: currentUser.uid,
+  recipient_id: recipientId,
+  content: text,
+  created_at: serverTimestamp(),
+  read_by: [currentUser.uid]
+});
 
         await updateDoc(chatRef, {
           last_message_at: serverTimestamp(),
