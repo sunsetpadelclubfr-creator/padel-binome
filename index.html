@@ -397,21 +397,20 @@ async function debugMessagesAccess(){
     const testKey = "debug_" + currentUser.uid;
 
     // test write
-    const ref = await addDoc(collection(db, "messages"), {
+   const ref = await addDoc(collection(db, "messages"), {
   pair_key: chatId,
   participants: [currentUser.uid, otherUid],
   sender_id: currentUser.uid,
   recipient_id: otherUid,
   content: text,
-  created_at: serverTimestamp()
-});
+  created_at_ms: Date.now()
     showDebug("DEBUG write OK id=" + ref.id, null);
 
     // test read query (avec orderBy)
     const qTest = query(
       collection(db, "messages"),
       where("pair_key", "==", testKey),
-      orderBy("created_at", "asc")
+      orderBy("created_at_ms", "asc")
     );
     const snap = await getDocs(qTest);
     showDebug("DEBUG read OK count=" + snap.size, null);
