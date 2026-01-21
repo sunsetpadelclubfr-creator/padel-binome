@@ -341,15 +341,24 @@ btnFindEl.addEventListener("click", async () => {
    - On récupère les derniers messages où je suis participant
    - On regroupe par pair_key
 ========================= */
-async function loadInboxFromMessages(){
+aasync function loadInboxFromMessages(){
   inboxMsgEl.textContent = "";
   inboxEl.innerHTML = "Chargement...";
 
+  // ✅ anti timing : on exige auth.currentUser
+  const u = auth.currentUser;
+  if(!u){
+    inboxEl.innerHTML = "<p>Aucune conversation.</p>";
+    inboxMsgEl.textContent = "Auth pas prête (auth.currentUser = null). Recharge la page (?v=999) puis réessaie.";
+    console.log("INBOX: auth.currentUser null");
+    return;
+  }
+  const uid = u.uid;
+
   try{
-    // On prend les derniers messages (ex: 80) et on regroupe côté client
     const qLast = query(
       collection(db, "messages"),
-      where("participants", "array-contains", currentUser.uid),
+      where("participants", "array-contains", uid),
       orderBy("created_at_ms", "desc"),
       limit(80)
     );
@@ -360,20 +369,16 @@ async function loadInboxFromMessages(){
       return;
     }
 
-    const byChat = new Map(); // chatId -> lastMessage
+    const byChat = new Map();
     snap.forEach(d => {
       const m = d.data();
       const chatId = m.pair_key;
-      if(!chatId) return;
-      if(!byChat.has(chatId)){
-        byChat.set(chatId, m); // premier = plus récent (desc)
-      }
+      if(chatId && !byChat.has(chatId)) byChat.set(chatId, m);
     });
 
-    // Render
     let html = "";
     for(const [chatId, m] of byChat.entries()){
-      const otherUid = (m.sender_id === currentUser.uid) ? m.recipient_id : m.sender_id;
+      const otherUid = (m.sender_id === uid) ? m.recipient_id : m.sender_id;
       const otherName = await resolveName(otherUid);
 
       html += `
@@ -403,9 +408,14 @@ async function loadInboxFromMessages(){
 
   }catch(e){
     inboxEl.innerHTML = "<p>Inbox indisponible.</p>";
-    showErr("Erreur inbox", e, inboxMsgEl);
+    inboxMsgEl.textContent =
+      "Erreur inbox: " + (e?.message || e) +
+      " | code=" + (e?.code || "(vide)") +
+      " | name=" + (e?.name || "(vide)");
+    console.log("INBOX ERROR", e);
   }
 }
+
 
 btnRefreshInboxEl.addEventListener("click", loadInboxFromMessages);
 
