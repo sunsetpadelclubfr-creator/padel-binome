@@ -25,6 +25,7 @@
     .me{margin-left:auto;background:#e8f5ff}
     .them{margin-right:auto;background:#f1f1f1}
     .smallBtn{width:auto;padding:8px 10px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #ccc;font-size:12px}
   </style>
 </head>
 <body>
@@ -126,6 +127,12 @@
 
     <hr>
 
+    <h3>Mes conversations</h3>
+    <div id="inbox"></div>
+    <p class="muted" id="inboxMsg"></p>
+
+    <hr>
+
     <!-- CHAT -->
     <div id="chatSection" class="hidden">
       <h3>Chat</h3>
@@ -156,11 +163,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore,
-  doc, getDoc, setDoc, updateDoc, serverTimestamp,
-  collection, getDocs, query, where, limit, orderBy,
+  doc, getDoc, setDoc, updateDoc, serverTimestamp, increment,
+  collection, getDocs, query, where, orderBy,
   addDoc, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+/* =========================
+   Firebase config
+========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyAN3k8oOsG_42wRmmkdHqKs7XjIamNiVy4",
   authDomain: "padel-binome.firebaseapp.com",
@@ -175,7 +185,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /* =========================
-   UI refs + DEBUG
+   UI refs + debug
 ========================= */
 const authView = document.getElementById("authView");
 const appView = document.getElementById("appView");
@@ -183,6 +193,9 @@ const authMsg = document.getElementById("authMsg");
 const saveMsg = document.getElementById("saveMsg");
 const userLine = document.getElementById("userLine");
 const results = document.getElementById("results");
+
+const inboxEl = document.getElementById("inbox");
+const inboxMsgEl = document.getElementById("inboxMsg");
 
 const emailEl = document.getElementById("email");
 const passwordEl = document.getElementById("password");
@@ -215,7 +228,7 @@ const btnSendEl = document.getElementById("btnSend");
 const chatMsgEl = document.getElementById("chatMsg");
 const btnCloseChatEl = document.getElementById("btnCloseChat");
 
-// Debug visible
+// Debug visible si le JS plante
 window.addEventListener("error", (e) => {
   authMsg.textContent = "Erreur JS: " + e.message;
 });
@@ -225,7 +238,7 @@ window.addEventListener("unhandledrejection", (e) => {
 authMsg.textContent = "JS chargé ✅";
 
 /* =========================
-   Options profil
+   Profil: options
 ========================= */
 const slotsOptions = [
   ["week_evening","Semaine soir"],
@@ -242,14 +255,13 @@ const needsOptions = [
   ["adaptability","Adaptabilité"]
 ];
 
-// Build level 1..10
+// build level 1..10
 for(let i=1;i<=10;i++){
   const o=document.createElement("option");
-  o.value=i;o.textContent="Niveau "+i;
+  o.value=i; o.textContent="Niveau "+i;
   levelEl.appendChild(o);
 }
 
-// Chips builder
 function buildChips(wrapId, opts){
   const w=document.getElementById(wrapId); w.innerHTML="";
   opts.forEach(([v,l])=>{
@@ -259,8 +271,8 @@ function buildChips(wrapId, opts){
     w.appendChild(lab);
   });
 }
-buildChips("slotsWrap",slotsOptions);
-buildChips("needsWrap",needsOptions);
+buildChips("slotsWrap", slotsOptions);
+buildChips("needsWrap", needsOptions);
 
 function getChecked(id){
   return Array.from(document.querySelectorAll(`#${id} input:checked`)).map(x=>x.value);
@@ -270,7 +282,7 @@ function setChecked(id,vals){
   document.querySelectorAll(`#${id} input`).forEach(cb=>cb.checked=s.has(cb.value));
 }
 
-// Limit needs to 2
+// limiter attentes à 2
 document.getElementById("needsWrap").addEventListener("change",()=>{
   const c=getChecked("needsWrap");
   if(c.length>2){
@@ -292,6 +304,7 @@ const neighbors = {
   "94":["75","92","93","91"],
   "91":["75","92","94","77","78"]
 };
+
 function getAllowedDepartments(myDept, includeNeighbors){
   if(!includeNeighbors) return [myDept];
   return [myDept, ...(neighbors[myDept] || [])];
@@ -329,6 +342,7 @@ async function loadProfile(uid){
   const snap=await getDoc(ref);
   if(!snap.exists()) return null;
   const p=snap.data();
+
   displayNameEl.value=p.display_name||"";
   departmentEl.value=p.department||"";
   clubEl.value=p.club||"";
@@ -369,7 +383,7 @@ async function saveProfile(uid,existing){
 }
 
 /* =========================
-   AUTH (corrigé)
+   AUTH
 ========================= */
 btnSignupEl.onclick = async () => {
   authMsg.textContent = "Création du compte...";
@@ -397,7 +411,9 @@ btnLogoutEl.onclick = async () => {
 
 let currentUser=null, currentProfile=null;
 
-// Save + visible toggle
+/* =========================
+   Profil actions
+========================= */
 btnSaveEl.onclick=async()=>{
   try{
     saveMsg.textContent="Enregistrement...";
@@ -405,6 +421,7 @@ btnSaveEl.onclick=async()=>{
     saveMsg.textContent="Profil enregistré ✅";
   }catch(e){saveMsg.textContent=e.message;}
 };
+
 btnToggleActiveEl.onclick=async()=>{
   const v=!(currentProfile?.is_active??true);
   await setDoc(doc(db,"profiles",currentUser.uid),{is_active:v,updated_at:serverTimestamp()},{merge:true});
@@ -412,7 +429,177 @@ btnToggleActiveEl.onclick=async()=>{
   saveMsg.textContent=v?"Visible ✅":"Invisible ✅";
 };
 
-// Matching
+/* =========================
+   Chat helpers
+========================= */
+function makePairKey(a,b){
+  return (a < b) ? (a + "_" + b) : (b + "_" + a);
+}
+
+let unsubscribeMessages = null;
+let currentChatId = null;
+let currentOtherUid = null;
+let currentOtherName = null;
+
+async function getOrCreateChat(otherUid){
+  // ID déterministe = pair_key (évite permission-denied sur query)
+  const pair_key = makePairKey(currentUser.uid, otherUid);
+  const chatRef = doc(db, "chats", pair_key);
+
+  await setDoc(chatRef, {
+    pair_key,
+    participants: [currentUser.uid, otherUid],
+    created_at: serverTimestamp(),
+    last_message_at: null,
+    last_message_preview: "",
+    last_message_sender: "",
+    // compteurs non-lus init (optionnel)
+    ["unread_"+currentUser.uid]: 0,
+    ["unread_"+otherUid]: 0
+  }, { merge: true });
+
+  return { chatId: pair_key, chatRef };
+}
+
+function renderMessage(msg){
+  const isMe = msg.sender_id === currentUser.uid;
+  const div = document.createElement("div");
+  div.className = "msg " + (isMe ? "me" : "them");
+  div.textContent = msg.content || "";
+  return div;
+}
+
+async function markVisibleUnread(chatId){
+  // remet mon compteur à 0 quand j’ouvre
+  const chatRef = doc(db, "chats", chatId);
+  await updateDoc(chatRef, { ["unread_"+currentUser.uid]: 0 });
+}
+
+/* =========================
+   Ouvrir chat (depuis matching ou inbox)
+========================= */
+async function openChat(otherUid, otherName, forcedChatId=null){
+  try{
+    currentOtherUid = otherUid;
+    currentOtherName = otherName || "Joueur";
+
+    chatWithName.textContent = currentOtherName;
+    chatInfo.textContent = "Connexion au chat...";
+    chatMsgEl.textContent = "";
+    msgInputEl.value = "";
+    messagesEl.innerHTML = "";
+
+    chatSection.classList.remove("hidden");
+
+    if(unsubscribeMessages) unsubscribeMessages();
+    unsubscribeMessages = null;
+
+    let chatId, chatRef;
+    if(forcedChatId){
+      chatId = forcedChatId;
+      chatRef = doc(db, "chats", chatId);
+    }else{
+      const res = await getOrCreateChat(otherUid);
+      chatId = res.chatId;
+      chatRef = res.chatRef;
+    }
+
+    currentChatId = chatId;
+
+    // remettre mon compteur à 0
+    await markVisibleUnread(chatId);
+
+    chatInfo.textContent = "Chat OK ✅ (ID: " + chatId + ")";
+
+    const msgsRef = collection(db, "chats", chatId, "messages");
+    const qMsgs = query(msgsRef, orderBy("created_at","asc"));
+
+    messagesEl.innerHTML = "Chargement des messages...";
+
+    unsubscribeMessages = onSnapshot(qMsgs, async (snapshot) => {
+      messagesEl.innerHTML = "";
+
+      // marquer les messages reçus comme lus
+      const toUpdate = [];
+
+      snapshot.forEach(docSnap => {
+        const m = docSnap.data();
+        messagesEl.appendChild(renderMessage(m));
+
+        if(m.recipient_id === currentUser.uid){
+          const rb = Array.isArray(m.read_by) ? m.read_by : [];
+          if(!rb.includes(currentUser.uid)){
+            toUpdate.push({ ref: docSnap.ref, read_by: [...rb, currentUser.uid] });
+          }
+        }
+      });
+
+      for(const u of toUpdate){
+        try{ await updateDoc(u.ref, { read_by: u.read_by }); }catch(_){}
+      }
+
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }, (err) => {
+      chatMsgEl.textContent = "Erreur écoute messages: " + err.message;
+    });
+
+    btnSendEl.onclick = async () => {
+      const text = msgInputEl.value.trim();
+      if(!text) return;
+
+      btnSendEl.disabled = true;
+      chatMsgEl.textContent = "";
+
+      try{
+        // message
+        await addDoc(collection(db, "chats", chatId, "messages"), {
+          sender_id: currentUser.uid,
+          recipient_id: otherUid,
+          content: text,
+          created_at: serverTimestamp(),
+          read_by: [currentUser.uid]
+        });
+
+        // update chat + compteur non-lu destinataire
+        await updateDoc(chatRef, {
+          ["unread_"+otherUid]: increment(1),
+          last_message_at: serverTimestamp(),
+          last_message_preview: text.slice(0, 120),
+          last_message_sender: currentUser.uid
+        });
+
+        msgInputEl.value = "";
+
+        // refresh inbox
+        await loadInbox();
+
+      }catch(e){
+        chatMsgEl.textContent = "Erreur envoi: " + (e.message || e);
+      }finally{
+        btnSendEl.disabled = false;
+      }
+    };
+
+  }catch(e){
+    chatInfo.textContent = "Erreur chat ❌";
+    chatMsgEl.textContent =
+      "message=" + (e?.message || "(vide)") +
+      " | code=" + (e?.code || "(vide)");
+  }
+}
+
+btnCloseChatEl.onclick = () => {
+  chatSection.classList.add("hidden");
+  currentChatId = null;
+  currentOtherUid = null;
+  currentOtherName = null;
+  if(unsubscribeMessages) unsubscribeMessages();
+  unsubscribeMessages = null;
+};
+
+/* =========================
+   Matching
+========================= */
 btnFindEl.onclick=async()=>{
   if(!currentProfile){
     results.innerHTML="<p>Complète ton profil.</p>";
@@ -459,128 +646,82 @@ btnFindEl.onclick=async()=>{
 };
 
 /* =========================
-   CHAT TEMPS RÉEL
+   Inbox (sous le matching)
 ========================= */
-function makePairKey(a,b){
-  return (a < b) ? (a + "_" + b) : (b + "_" + a);
-}
+async function loadInbox(){
+  inboxMsgEl.textContent = "";
+  inboxEl.innerHTML = "Chargement...";
 
-let unsubscribeMessages = null;
-
-async function getOrCreateChat(otherUid){
-  const pair_key = makePairKey(currentUser.uid, otherUid);
-  const chatRef = doc(db, "chats", pair_key);
-
-  await setDoc(chatRef, {
-    pair_key,
-    participants: [currentUser.uid, otherUid],
-    created_at: serverTimestamp(),
-    last_message_at: null,
-    last_message_preview: "",
-    last_message_sender: ""
-  }, { merge: true });
-
-  return { chatId: pair_key, chatRef };
-}
-
-function renderMessage(msg){
-  const isMe = msg.sender_id === currentUser.uid;
-  const div = document.createElement("div");
-  div.className = "msg " + (isMe ? "me" : "them");
-  div.textContent = msg.content || "";
-  return div;
-}
-
-async function openChat(otherUid, otherName){
   try{
-    chatWithName.textContent = otherName || "Joueur";
-    chatInfo.textContent = "Connexion au chat...";
-    chatMsgEl.textContent = "";
-    msgInputEl.value = "";
-    messagesEl.innerHTML = "";
+    const qInbox = query(
+      collection(db, "chats"),
+      where("participants", "array-contains", currentUser.uid),
+      orderBy("last_message_at", "desc")
+    );
 
-    chatSection.classList.remove("hidden");
+    const snap = await getDocs(qInbox);
+    if(snap.empty){
+      inboxEl.innerHTML = "<p>Aucune conversation.</p>";
+      return;
+    }
 
-    if(unsubscribeMessages) unsubscribeMessages();
-    unsubscribeMessages = null;
+    let html = "";
+    snap.forEach(d=>{
+      const c = d.data();
+      const otherUid = (c.participants || []).find(p=>p!==currentUser.uid) || "—";
+      const unread = c["unread_"+currentUser.uid] || 0;
+      const preview = c.last_message_preview || "—";
 
-    const { chatId, chatRef } = await getOrCreateChat(otherUid);
-    chatInfo.textContent = "Chat OK ✅ (ID: " + chatId + ")";
-
-    const msgsRef = collection(db, "chats", chatId, "messages");
-    const qMsgs = query(msgsRef, orderBy("created_at","asc"));
-
-    messagesEl.innerHTML = "Chargement des messages...";
-
-    unsubscribeMessages = onSnapshot(qMsgs, (snapshot) => {
-      messagesEl.innerHTML = "";
-      snapshot.forEach(docSnap => {
-        messagesEl.appendChild(renderMessage(docSnap.data()));
-      });
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }, (err) => {
-      chatMsgEl.textContent = "Erreur écoute messages: " + err.message;
+      // On affiche UID si pas de nom (V1). Plus tard on peut résoudre display_name via profiles.
+      html += `
+        <div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:8px">
+          <strong>Chat avec ${otherUid}</strong>
+          ${unread>0 ? ` <span class="badge">${unread} nouveau(x)</span>` : ""}
+          <br>
+          <span class="muted">${preview}</span><br>
+          <button class="btnOpenChat" data-chat="${d.id}" data-other="${otherUid}">Ouvrir</button>
+        </div>
+      `;
     });
 
-    btnSendEl.onclick = async () => {
-      const recipientId = otherUid; // celui avec qui tu chats
-      if(!text) return;
+    inboxEl.innerHTML = html;
 
-      btnSendEl.disabled = true;
-      chatMsgEl.textContent = "";
+    document.querySelectorAll(".btnOpenChat").forEach(btn=>{
+      btn.onclick = async () => {
+        const chatId = btn.dataset.chat;
+        const otherUid = btn.dataset.other;
 
-      try{
-        await addDoc(collection(db, "chats", chatId, "messages"), {
-  sender_id: currentUser.uid,
-  recipient_id: recipientId,
-  content: text,
-  created_at: serverTimestamp(),
-  read_by: [currentUser.uid]
-});
-
-        await updateDoc(chatRef, {
-          last_message_at: serverTimestamp(),
-          last_message_preview: text.slice(0, 120),
-          last_message_sender: currentUser.uid
-        });
-
-        msgInputEl.value = "";
-      }catch(e){
-        chatMsgEl.textContent = "Erreur envoi: " + (e.message || e);
-      }finally{
-        btnSendEl.disabled = false;
-      }
-    };
+        // Déduire le nom (si on veut, V1: UID)
+        await openChat(otherUid, "Joueur", chatId);
+        await loadInbox();
+      };
+    });
 
   }catch(e){
-    chatInfo.textContent = "Erreur chat ❌";
-    chatMsgEl.textContent =
-      "message=" + (e?.message || "(vide)") +
-      " | code=" + (e?.code || "(vide)") +
-      " | name=" + (e?.name || "(vide)") +
-      " | raw=" + JSON.stringify(e, Object.getOwnPropertyNames(e));
+    inboxEl.innerHTML = "<p>Inbox indisponible.</p>";
+    inboxMsgEl.textContent = (e.message || e);
   }
 }
 
-btnCloseChatEl.onclick = () => {
-  chatSection.classList.add("hidden");
-  if(unsubscribeMessages) unsubscribeMessages();
-  unsubscribeMessages = null;
-};
-
-// Auth state
+/* =========================
+   Auth state
+========================= */
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
+
   if(!user){
     appView.classList.add("hidden");
     authView.classList.remove("hidden");
     chatSection.classList.add("hidden");
     return;
   }
+
   authView.classList.add("hidden");
   appView.classList.remove("hidden");
   userLine.textContent = `Connecté: ${user.email}`;
+
   currentProfile = await loadProfile(user.uid);
+  await loadInbox();
 });
 </script>
 
