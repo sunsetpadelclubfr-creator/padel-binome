@@ -173,6 +173,17 @@ function showDebug(title, obj){
   console.log(title, obj);
 }
 
+function showErr(prefix, err){
+  const msg =
+    prefix + ": " +
+    (err?.message || err) +
+    " | code=" + (err?.code || "(vide)") +
+    " | name=" + (err?.name || "(vide)") +
+    " | raw=" + JSON.stringify(err, Object.getOwnPropertyNames(err));
+  chatMsgEl.textContent = msg;
+  showDebug(prefix, err);
+}
+
 window.addEventListener("error", (e) => {
   authMsgEl.textContent = "Erreur JS: " + e.message;
   showDebug("window.error", e);
@@ -205,16 +216,6 @@ function renderMsg(m){
   div.className = "msg " + (m.sender_id === currentUser.uid ? "me" : "them");
   div.textContent = m.content || "";
   return div;
-}
-function showErr(prefix, err){
-  const msg =
-    prefix + ": " +
-    (err?.message || err) +
-    " | code=" + (err?.code || "(vide)") +
-    " | name=" + (err?.name || "(vide)") +
-    " | raw=" + JSON.stringify(err, Object.getOwnPropertyNames(err));
-  chatMsgEl.textContent = msg;
-  showDebug(prefix, err);
 }
 
 /* =========================
@@ -396,30 +397,40 @@ async function debugMessagesAccess(){
   try{
     const testKey = "debug_" + currentUser.uid;
 
-    // test write
-   const ref = await addDoc(collection(db, "messages"), {
-  pair_key: chatId,
-  participants: [currentUser.uid, otherUid],
-  sender_id: currentUser.uid,
-  recipient_id: otherUid,
-  content: text,
-  created_at_ms: Date.now()
+    // 1) write
+    const ref = await addDoc(collection(db, "messages"), {
+      pair_key: testKey,
+      participants: [currentUser.uid, currentUser.uid],
+      sender_id: currentUser.uid,
+      recipient_id: currentUser.uid,
+      content: "debug",
+      created_at_ms: Date.now()
+    });
     showDebug("DEBUG write OK id=" + ref.id, null);
 
-    // test read query (avec orderBy)
+    // 2) read no orderBy
+    const qTest2 = query(
+      collection(db, "messages"),
+      where("participants", "array-contains", currentUser.uid),
+      where("pair_key", "==", testKey)
+    );
+    const snap2 = await getDocs(qTest2);
+    showDebug("DEBUG read (no orderBy) count=" + snap2.size, null);
+
+    // 3) read with orderBy
     const qTest = query(
       collection(db, "messages"),
+      where("participants", "array-contains", currentUser.uid),
       where("pair_key", "==", testKey),
       orderBy("created_at_ms", "asc")
     );
     const snap = await getDocs(qTest);
-    showDebug("DEBUG read OK count=" + snap.size, null);
+    showDebug("DEBUG read (with orderBy) count=" + snap.size, null);
 
   }catch(e){
     showErr("DEBUG KO", e);
   }
 }
-
 
 /* =========================
    Chat (messages top-level)
@@ -445,38 +456,30 @@ async function openChat(otherUid, otherName, forcedChatId = null){
   chatInfoEl.textContent = "Chat OK ✅ (pair_key: " + chatId + ")";
 
   const qMsgs = query(
-  collection(db, "messages"),
-  where("participants", "array-contains", currentUser.uid),
-  where("pair_key", "==", chatId)
-);
+    collection(db, "messages"),
+    where("participants", "array-contains", currentUser.uid),
+    where("pair_key", "==", chatId),
+    orderBy("created_at_ms", "asc")
+  );
 
-unsubscribeMessages = onSnapshot(
-  qMsgs,
-  (snap) => {
-    messagesEl.innerHTML = "";
-    if (snap.empty) {
-      messagesEl.innerHTML = "<div class='muted'>Aucun message pour l’instant.</div>";
-      return;
+  unsubscribeMessages = onSnapshot(
+    qMsgs,
+    (snap) => {
+      messagesEl.innerHTML = "";
+      if(snap.empty){
+        messagesEl.innerHTML = "<div class='muted'>Aucun message pour l’instant.</div>";
+        return;
+      }
+      snap.forEach(d => {
+        messagesEl.appendChild(renderMsg(d.data()));
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    },
+    (err) => {
+      messagesEl.innerHTML = "";
+      showErr("Erreur lecture messages", err);
     }
-    snap.forEach(d => {
-      const m = d.data();
-      const div = document.createElement("div");
-      div.className = "msg " + (m.sender_id === currentUser.uid ? "me" : "them");
-      div.textContent = m.content || "";
-      messagesEl.appendChild(div);
-    });
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  },
-  (err) => {
-    messagesEl.innerHTML = "";
-    chatMsgEl.textContent =
-      "Erreur lecture messages: " + err.message +
-      " | code=" + err.code +
-      " | name=" + err.name;
-    console.log("SNAPSHOT ERROR", err);
-  }
-);
-
+  );
 
   btnSendEl.onclick = async () => {
     const text = msgInputEl.value.trim();
@@ -486,17 +489,17 @@ unsubscribeMessages = onSnapshot(
     chatMsgEl.textContent = "";
 
     try{
-      // 1) write message (top-level)
+      // write message (created_at_ms)
       await addDoc(collection(db, "messages"), {
-  pair_key: chatId,
-  participants: [currentUser.uid, otherUid],
-  sender_id: currentUser.uid,
-  recipient_id: otherUid,
-  content: text,
-  created_at: serverTimestamp()
-});
+        pair_key: chatId,
+        participants: [currentUser.uid, otherUid],
+        sender_id: currentUser.uid,
+        recipient_id: otherUid,
+        content: text,
+        created_at_ms: Date.now()
+      });
 
-      // 2) inbox destinataire (unread +1)
+      // inbox destinataire (unread +1)
       await setDoc(doc(db, "user_inbox", otherUid, "threads", chatId), {
         other_uid: currentUser.uid,
         other_name: currentProfile?.display_name || "Joueur",
@@ -505,7 +508,7 @@ unsubscribeMessages = onSnapshot(
         unread: increment(1)
       }, { merge:true });
 
-      // 3) mon inbox (unread=0)
+      // mon inbox (unread=0)
       await setDoc(doc(db, "user_inbox", currentUser.uid, "threads", chatId), {
         other_uid: otherUid,
         other_name: currentOtherName || "Joueur",
@@ -564,3 +567,4 @@ onAuthStateChanged(auth, async (user) => {
 
 </body>
 </html>
+
