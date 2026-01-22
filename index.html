@@ -836,15 +836,20 @@ btnFindMatches.addEventListener("click", async ()=>{
 /* =========================
    Chat + Inbox (robuste)
 ========================= */
+function sortedParticipants(a, b){
+  return (a < b) ? [a, b] : [b, a];
+}
+
 async function ensureChatDoc(chatId, uidA, uidB){
-  await setDoc(doc(db,"chats",chatId), {
-    participants: [uidA, uidB],
-    created_at_ms: Date.now(),
-    last_message_at_ms: 0,
-    last_message_preview: "",
-    last_message_sender: ""
+  // IMPORTANT : participants dans un ordre stable pour les 2 utilisateurs
+  const parts = sortedParticipants(uidA, uidB);
+
+  // On ne met que participants (et on merge). Pas de created_at_ms ici.
+  await setDoc(doc(db, "chats", chatId), {
+    participants: parts
   }, { merge: true });
 }
+
 
 async function loadInbox(){
   inboxMsg.textContent = "";
@@ -918,7 +923,15 @@ async function openChat(uid, name, forcedChatId=null){
   chatMsg.textContent = "";
   msgsDiv.innerHTML = "Chargement...";
 
+  try{
   await ensureChatDoc(currentChatId, currentUser.uid, uid);
+}catch(e){
+  chatMsg.textContent = "Erreur ouverture chat (STEP0): " + (e?.message || e) + " | code=" + (e?.code||"");
+  console.log("openChat STEP0 error", e);
+  msgsDiv.innerHTML = "<span class='muted'>Impossible d’ouvrir le chat.</span>";
+  return;
+}
+
 
   const qMsgs = query(
     collection(db, "chats", currentChatId, "messages"),
