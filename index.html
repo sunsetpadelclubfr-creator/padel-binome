@@ -28,7 +28,6 @@
       padding: 14px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.06);
     }
-    .sunset h3 { margin: 0 0 8px 0; }
     .sunset .hint { color:#6b7280; font-size:14px; margin-top:-2px; }
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     @media (max-width:700px){ .grid2{ grid-template-columns:1fr; } }
@@ -394,7 +393,7 @@ function normalizeClub(s){
 }
 
 /* =========================
-   Départements voisins (métropole + 2A/2B)
+   Départements voisins
 ========================= */
 const DEP_NEIGHBORS = {
   "01":["38","39","69","71","73","74"],
@@ -498,26 +497,18 @@ const DEP_NEIGHBORS = {
 function normalizeDep(dep){
   if(!dep) return "";
   let d = String(dep).trim().toUpperCase();
-  if(/^\d$/.test(d)) d = "0"+d; // "1" -> "01"
-  if(d === "20") d = "2A"; // on traite "20" comme Corse, on gère en spécial
+  if(/^\d$/.test(d)) d = "0"+d;
+  if(d === "20") d = "2A";
   return d;
 }
-
 function allowedDeps(myDep, includeNeighbors){
   const raw = String(myDep || "").trim().toUpperCase();
   const d = normalizeDep(raw);
   const set = new Set();
   if(!d) return set;
-
-  if(raw === "20"){
-    set.add("2A"); set.add("2B");
-    return set;
-  }
-
+  if(raw === "20"){ set.add("2A"); set.add("2B"); return set; }
   set.add(d);
-  if(includeNeighbors){
-    (DEP_NEIGHBORS[d] || []).forEach(x => set.add(x));
-  }
+  if(includeNeighbors){ (DEP_NEIGHBORS[d] || []).forEach(x => set.add(x)); }
   return set;
 }
 
@@ -535,7 +526,6 @@ btnLogin.addEventListener("click", async (e)=>{
     logDebug("login.error", err);
   }
 });
-
 btnSignup.addEventListener("click", async (e)=>{
   e.preventDefault();
   authMsg.textContent = "Création...";
@@ -547,7 +537,6 @@ btnSignup.addEventListener("click", async (e)=>{
     logDebug("signup.error", err);
   }
 });
-
 btnLogout.addEventListener("click", ()=>signOut(auth));
 
 /* =========================
@@ -562,7 +551,6 @@ async function loadProfile(uid){
   clubEl.value        = p.club || "";
   return p;
 }
-
 btnSave.addEventListener("click", async ()=>{
   if(!currentUser) return;
   const display_name = displayNameEl.value.trim();
@@ -574,9 +562,7 @@ btnSave.addEventListener("click", async ()=>{
   }
   saveMsg.textContent = "Enregistrement...";
   await setDoc(doc(db,"profiles", currentUser.uid), {
-    display_name,
-    department,
-    club,
+    display_name, department, club,
     is_active: currentProfile?.is_active ?? true,
     updated_at: serverTimestamp(),
     created_at: currentProfile?.created_at ?? serverTimestamp()
@@ -584,21 +570,12 @@ btnSave.addEventListener("click", async ()=>{
 
   currentProfile = await loadProfile(currentUser.uid);
   saveMsg.textContent = "Profil enregistré ✅";
-
-  // met à jour hint club
-  clubHint.textContent = currentProfile?.club
-    ? `Club enregistré : “${currentProfile.club}”`
-    : "Aucun club enregistré (le filtre club ne pourra pas s’appliquer).";
+  applyHints();
 });
-
 btnActive.addEventListener("click", async ()=>{
   if(!currentUser) return;
   const next = !(currentProfile?.is_active ?? true);
-  await setDoc(doc(db,"profiles", currentUser.uid), {
-    is_active: next,
-    updated_at: serverTimestamp()
-  }, { merge:true });
-
+  await setDoc(doc(db,"profiles", currentUser.uid), { is_active: next, updated_at: serverTimestamp() }, { merge:true });
   currentProfile = await loadProfile(currentUser.uid);
   saveMsg.textContent = next ? "Visible ✅" : "Invisible ✅";
 });
@@ -609,7 +586,7 @@ btnActive.addEventListener("click", async ()=>{
 function getQA(){
   return {
     gender: q_gender.value,
-    search: q_search.value,        // same | mix
+    search: q_search.value,
     neighbors: !!q_neighbors.checked,
     clubOnly: !!q_clubOnly.checked,
     level: Number(q_level.value),
@@ -624,12 +601,9 @@ function getQA(){
     avail: q_avail.value
   };
 }
-
 function applyHints(){
   if(q_search.value === "same"){
-    searchHint.textContent = (q_gender.value === "H")
-      ? "Tu verras uniquement des hommes."
-      : "Tu verras uniquement des femmes.";
+    searchHint.textContent = (q_gender.value === "H") ? "Tu verras uniquement des hommes." : "Tu verras uniquement des femmes.";
   } else {
     searchHint.textContent = "Tu verras hommes + femmes (mixte).";
   }
@@ -645,7 +619,6 @@ function applyHints(){
     ? `Club: “${club}”${q_clubOnly.checked ? " (filtre activé)" : ""}`
     : "Aucun club enregistré (le filtre club ne pourra pas s’appliquer).";
 }
-
 q_gender.addEventListener("change", applyHints);
 q_search.addEventListener("change", applyHints);
 q_neighbors.addEventListener("change", applyHints);
@@ -657,17 +630,11 @@ btnSaveQA.addEventListener("click", async ()=>{
   qaMsg.textContent = "Enregistrement questionnaire...";
   try{
     const qa = getQA();
-    await setDoc(doc(db, "profiles", currentUser.uid), {
-      qa,
-      updated_at: serverTimestamp(),
-      is_active: currentProfile?.is_active ?? true
-    }, { merge:true });
-
+    await setDoc(doc(db, "profiles", currentUser.uid), { qa, updated_at: serverTimestamp(), is_active: currentProfile?.is_active ?? true }, { merge:true });
     currentProfile = await (async ()=>{
       const snap = await getDoc(doc(db,"profiles", currentUser.uid));
       return snap.exists() ? snap.data() : currentProfile;
     })();
-
     qaMsg.textContent = "Questionnaire enregistré ✅";
     applyHints();
   }catch(e){
@@ -677,22 +644,16 @@ btnSaveQA.addEventListener("click", async ()=>{
 });
 
 /* =========================
-   Filtre genre same/mix
+   Filtres / Score
 ========================= */
 function isGenderAllowed(meQA, otherQA){
   if(!otherQA?.gender) return true;
   if(meQA.search === "mix") return true;
-  return otherQA.gender === meQA.gender; // same category
+  return otherQA.gender === meQA.gender;
 }
-
-/* =========================
-   Score compatibilité (0..100)
-========================= */
 function compatibilityScore(meQA, otherQA){
   if(!otherQA) return 0;
-
-  let score = 0;
-  let max = 0;
+  let score = 0, max = 0;
 
   max += 25;
   const d = Math.abs((meQA.level||0) - (otherQA.level||0));
@@ -735,21 +696,12 @@ function compatibilityScore(meQA, otherQA){
   return Math.round((score / max) * 100);
 }
 
-/* =========================
-   Matching
-========================= */
 btnFindMatches.addEventListener("click", async ()=>{
   matchResults.innerHTML = "";
   qaMsg.textContent = "";
 
-  if(!currentUser){
-    qaMsg.textContent = "Connecte-toi d’abord.";
-    return;
-  }
-  if(!currentProfile?.department){
-    qaMsg.textContent = "Complète ton profil (département) puis enregistre.";
-    return;
-  }
+  if(!currentUser){ qaMsg.textContent = "Connecte-toi d’abord."; return; }
+  if(!currentProfile?.department){ qaMsg.textContent = "Complète ton profil (département) puis enregistre."; return; }
 
   const meQA = currentProfile?.qa || getQA();
   const depSet = allowedDeps(currentProfile.department, meQA.neighbors);
@@ -777,17 +729,10 @@ btnFindMatches.addEventListener("click", async ()=>{
       }
 
       const otherQA = p.qa || null;
-
       if(!isGenderAllowed(meQA, otherQA)) return;
 
       const score = compatibilityScore(meQA, otherQA);
-      candidates.push({
-        uid: d.id,
-        name: p.display_name || "Joueur",
-        dep: p.department || "",
-        club: p.club || "",
-        score
-      });
+      candidates.push({ uid: d.id, name: p.display_name || "Joueur", dep: p.department || "", club: p.club || "", score });
     });
 
     candidates.sort((a,b)=> b.score - a.score);
@@ -834,32 +779,20 @@ btnFindMatches.addEventListener("click", async ()=>{
 });
 
 /* =========================
-   Chat + Inbox (robuste)
+   CHAT + INBOX
+   Fix CRITIQUE: participants triés pour éviter permission-denied user2
 ========================= */
 function sortedParticipants(a, b){
   return (a < b) ? [a, b] : [b, a];
 }
-
-function sortedParticipants(a, b){
-  return (a < b) ? [a, b] : [b, a];
-}
-
 async function ensureChatDoc(chatId, uidA, uidB){
   const parts = sortedParticipants(uidA, uidB);
-
-  // ⚠️ Important: participants dans le même ordre pour les 2 utilisateurs
-  // Sinon l'utilisateur 2 "change" le tableau -> rules bloquent
-  await setDoc(doc(db, "chats", chatId), {
-    participants: parts
-  }, { merge: true });
+  await setDoc(doc(db,"chats",chatId), { participants: parts }, { merge: true });
 }
-
-
 
 async function loadInbox(){
   inboxMsg.textContent = "";
   inbox.innerHTML = "Chargement...";
-
   try{
     const qInbox = query(
       collection(db, "inbox", currentUser.uid, "chats"),
@@ -911,7 +844,6 @@ async function loadInbox(){
     logDebug("inbox.error", err);
   }
 }
-
 btnInbox.addEventListener("click", loadInbox);
 
 async function openChat(uid, name, forcedChatId=null){
@@ -928,22 +860,15 @@ async function openChat(uid, name, forcedChatId=null){
   chatMsg.textContent = "";
   msgsDiv.innerHTML = "Chargement...";
 
+  // STEP0 safe
   try{
-  await ensureChatDoc(currentChatId, currentUser.uid, uid);
-}catch(e){
-  chatMsg.textContent = "Erreur ouverture chat (STEP0): " + (e?.message || e) + " | code=" + (e?.code||"");
-  console.log("openChat STEP0 error", e);
-  msgsDiv.innerHTML = "<span class='muted'>Impossible d’ouvrir le chat.</span>";
-  return;
-}
-
-}catch(e){
-  chatMsg.textContent = "Erreur ouverture chat (STEP0): " + (e?.message || e) + " | code=" + (e?.code||"");
-  console.log("openChat STEP0 error", e);
-  msgsDiv.innerHTML = "<span class='muted'>Impossible d’ouvrir le chat.</span>";
-  return;
-}
-
+    await ensureChatDoc(currentChatId, currentUser.uid, uid);
+  }catch(e){
+    chatMsg.textContent = "Erreur ouverture chat (STEP0): " + (e?.message || e) + " | code=" + (e?.code||"");
+    console.log("openChat STEP0 error", e);
+    msgsDiv.innerHTML = "<span class='muted'>Impossible d’ouvrir le chat.</span>";
+    return;
+  }
 
   const qMsgs = query(
     collection(db, "chats", currentChatId, "messages"),
@@ -1010,7 +935,7 @@ btnSend.addEventListener("click", async ()=>{
     return;
   }
 
-  // STEP 2: update chat meta + inbox des 2
+  // STEP 2
   try{
     const now = Date.now();
     const preview = text.slice(0,120);
@@ -1034,9 +959,7 @@ btnSend.addEventListener("click", async ()=>{
     }, { merge: true });
 
   }catch(e2){
-    chatMsg.textContent =
-      "Message envoyé ✅ mais erreur STEP2 (meta/inbox): " +
-      (e2?.message || e2) + " | code=" + (e2?.code||"");
+    chatMsg.textContent = "Message envoyé ✅ mais erreur STEP2 (meta/inbox): " + (e2?.message || e2) + " | code=" + (e2?.code||"");
     logDebug("STEP2 error", e2);
   }
 
@@ -1063,8 +986,6 @@ onAuthStateChanged(auth, async (u)=>{
   userLine.textContent = `Connecté: ${u.email} | uid=${u.uid} | projectId=${app.options.projectId}`;
 
   currentProfile = await loadProfile(u.uid);
-
-  // Si le profil n’existe pas encore, on garde les hints basés sur les inputs
   applyHints();
   await loadInbox();
 });
