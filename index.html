@@ -5,57 +5,9 @@
   <title>Padel Binôme</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* Sunset clair */
-.sunset {
-  background: linear-gradient(180deg, #fff7ed 0%, #fff1f2 55%, #eef2ff 120%);
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
-}
-.sunset h3 { margin: 0 0 8px 0; }
-.sunset .hint { color:#6b7280; font-size:14px; margin-top:-2px; }
-.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-@media (max-width:700px){ .grid2{ grid-template-columns:1fr; } }
-.pill {
-  display:inline-flex; gap:8px; flex-wrap:wrap;
-}
-.pill label{
-  border:1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.75);
-  padding:8px 10px;
-  border-radius: 999px;
-  cursor:pointer;
-}
-.pill input{ width:auto; margin:0 6px 0 0; }
-select, input[type="range"]{
-  background: rgba(255,255,255,0.85);
-}
-.badge {
-  display:inline-block;
-  padding:3px 8px;
-  border-radius:999px;
-  border:1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.75);
-  font-size:12px;
-  color:#374151;
-}
-.matchCard{
-  border:1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.75);
-  border-radius: 12px;
-  padding: 12px;
-  margin: 10px 0;
-}
-.matchRow{
-  display:flex; justify-content:space-between; gap:10px; align-items:center;
-}
-.matchScore{ font-weight:700; }
-.small{ font-size:13px; color:#6b7280; }
-
     body{font-family:system-ui;margin:14px}
     .card{max-width:980px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:14px}
-    input,button,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
+    input,button,textarea,select{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
     button{cursor:pointer}
     .row{display:flex;gap:10px}
     .row>*{flex:1}
@@ -67,6 +19,49 @@ select, input[type="range"]{
     .me{margin-left:auto;background:#e8f5ff}
     .them{margin-right:auto;background:#f1f1f1}
     pre{white-space:pre-wrap;background:#111;color:#eee;padding:10px;border-radius:10px;overflow:auto}
+
+    /* Sunset clair */
+    .sunset {
+      background: linear-gradient(180deg, #fff7ed 0%, #fff1f2 55%, #eef2ff 120%);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    }
+    .sunset h3 { margin: 0 0 8px 0; }
+    .sunset .hint { color:#6b7280; font-size:14px; margin-top:-2px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:700px){ .grid2{ grid-template-columns:1fr; } }
+    .badge {
+      display:inline-block;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.75);
+      font-size:12px;
+      color:#374151;
+    }
+    .matchCard{
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.75);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 10px 0;
+    }
+    .matchRow{
+      display:flex; justify-content:space-between; gap:10px; align-items:center;
+    }
+    .matchScore{ font-weight:700; }
+    .small{ font-size:13px; color:#6b7280; }
+    .chip{
+      display:inline-flex; align-items:center; gap:10px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.75);
+      padding:8px 10px;
+      border-radius: 999px;
+      margin: 6px 0;
+    }
+    .chip input{ width:auto; margin:0; }
   </style>
 </head>
 <body>
@@ -100,139 +95,152 @@ select, input[type="range"]{
     <h3>Mon profil</h3>
     <div class="box">
       <input id="display_name" placeholder="Pseudo / Prénom">
-      <input id="department" placeholder="Département (ex: 75)">
+      <div class="row">
+        <input id="department" placeholder="Département (ex: 75 ou 2A)">
+        <input id="club" placeholder="Club (ex: Sunset Padel Club)">
+      </div>
       <div class="row">
         <button id="btnSave" type="button">Enregistrer</button>
         <button id="btnActive" type="button">Visible / Invisible</button>
       </div>
       <p id="saveMsg" class="muted"></p>
     </div>
-    
-<h3>Questionnaire Padel (matching)</h3>
-<div class="sunset" id="qaBox">
-  <div class="hint">12 questions rapides pour trouver un binôme compatible.</div>
 
-  <div class="grid2" style="margin-top:10px">
-    <div>
-      <label><strong>1) Vous êtes ?</strong></label>
-      <select id="q_gender">
-        <option value="H">Homme</option>
-        <option value="F">Femme</option>
-      </select>
+    <h3>Questionnaire Padel (matching)</h3>
+    <div class="sunset" id="qaBox">
+      <div class="hint">12 questions rapides pour trouver un binôme compatible.</div>
+
+      <div class="grid2" style="margin-top:10px">
+        <div>
+          <label><strong>1) Vous êtes ?</strong></label>
+          <select id="q_gender">
+            <option value="H">Homme</option>
+            <option value="F">Femme</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>2) Vous recherchez ?</strong></label>
+          <select id="q_search">
+            <option value="same">Même catégorie</option>
+            <option value="mix">Mixte</option>
+          </select>
+          <div class="small" id="searchHint"></div>
+        </div>
+
+        <div>
+          <label class="chip">
+            <input id="q_neighbors" type="checkbox">
+            <span><strong>Inclure les départements voisins</strong></span>
+          </label>
+          <div class="small" id="neighborsHint"></div>
+        </div>
+
+        <div>
+          <label class="chip">
+            <input id="q_clubOnly" type="checkbox">
+            <span><strong>Filtrer par mon club</strong></span>
+          </label>
+          <div class="small" id="clubHint"></div>
+        </div>
+
+        <div>
+          <label><strong>3) Niveau (1–10)</strong> <span class="badge" id="lvlBadge">5</span></label>
+          <input id="q_level" type="range" min="1" max="10" step="1" value="5">
+          <div class="small">1 = débutant · 10 = très avancé</div>
+        </div>
+
+        <div>
+          <label><strong>4) Main dominante</strong></label>
+          <select id="q_hand">
+            <option value="R">Droitier</option>
+            <option value="L">Gaucher</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>5) Poste préféré</strong></label>
+          <select id="q_side">
+            <option value="left">Gauche</option>
+            <option value="right">Droite</option>
+            <option value="any">Indifférent</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>6) Style principal</strong></label>
+          <select id="q_style">
+            <option value="atk">Attaquant</option>
+            <option value="def">Défenseur</option>
+            <option value="bal">Polyvalent</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>7) Communication</strong></label>
+          <select id="q_comms">
+            <option value="calm">Calme</option>
+            <option value="norm">Normal</option>
+            <option value="vocal">Très vocal</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>8) Mental</strong></label>
+          <select id="q_mental">
+            <option value="chill">Chill</option>
+            <option value="comp">Compétiteur</option>
+            <option value="hard">Très compétiteur</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>9) Tolérance à l’erreur</strong></label>
+          <select id="q_tolerance">
+            <option value="patient">Patience</option>
+            <option value="norm">Normal</option>
+            <option value="strict">Exigeant</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>10) Objectif</strong></label>
+          <select id="q_goal">
+            <option value="fun">Loisir</option>
+            <option value="progress">Progression</option>
+            <option value="tourney">Tournois</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>11) Fréquence</strong></label>
+          <select id="q_freq">
+            <option value="1">1x/sem</option>
+            <option value="2">2x/sem</option>
+            <option value="3">3x+/sem</option>
+            <option value="v">Variable</option>
+          </select>
+        </div>
+
+        <div>
+          <label><strong>12) Disponibilités</strong></label>
+          <select id="q_avail">
+            <option value="week">Semaine</option>
+            <option value="end">Week-end</option>
+            <option value="both">Les deux</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px">
+        <button id="btnSaveQA" type="button">Enregistrer mon questionnaire</button>
+        <button id="btnFindMatches" type="button">Trouver mon binôme</button>
+      </div>
+
+      <p class="muted" id="qaMsg"></p>
     </div>
 
-    <div>
-      <label><strong>2) Vous recherchez ?</strong></label>
-      <select id="q_search">
-        <option value="same">Même catégorie</option>
-        <option value="mix">Mixte</option>
-      </select>
-      <div class="small" id="searchHint"></div>
-    </div>
-
-    <div>
-      <label><strong>3) Niveau (1–10)</strong> <span class="badge" id="lvlBadge">5</span></label>
-      <input id="q_level" type="range" min="1" max="10" step="1" value="5">
-      <div class="small">1 = débutant · 10 = très avancé</div>
-    </div>
-
-    <div>
-      <label><strong>4) Main dominante</strong></label>
-      <select id="q_hand">
-        <option value="R">Droitier</option>
-        <option value="L">Gaucher</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>5) Poste préféré</strong></label>
-      <select id="q_side">
-        <option value="left">Gauche</option>
-        <option value="right">Droite</option>
-        <option value="any">Indifférent</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>6) Style principal</strong></label>
-      <select id="q_style">
-        <option value="atk">Attaquant</option>
-        <option value="def">Défenseur</option>
-        <option value="bal">Polyvalent</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>7) Communication</strong></label>
-      <select id="q_comms">
-        <option value="calm">Calme</option>
-        <option value="norm">Normal</option>
-        <option value="vocal">Très vocal</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>8) Mental</strong></label>
-      <select id="q_mental">
-        <option value="chill">Chill</option>
-        <option value="comp">Compétiteur</option>
-        <option value="hard">Très compétiteur</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>9) Tolérance à l’erreur</strong></label>
-      <select id="q_tolerance">
-        <option value="patient">Patience</option>
-        <option value="norm">Normal</option>
-        <option value="strict">Exigeant</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>10) Objectif</strong></label>
-      <select id="q_goal">
-        <option value="fun">Loisir</option>
-        <option value="progress">Progression</option>
-        <option value="tourney">Tournois</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>11) Fréquence</strong></label>
-      <select id="q_freq">
-        <option value="1">1x/sem</option>
-        <option value="2">2x/sem</option>
-        <option value="3">3x+/sem</option>
-        <option value="v">Variable</option>
-      </select>
-    </div>
-
-    <div>
-      <label><strong>12) Disponibilités</strong></label>
-      <select id="q_avail">
-        <option value="week">Semaine</option>
-        <option value="end">Week-end</option>
-        <option value="both">Les deux</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="row" style="margin-top:10px">
-    <button id="btnSaveQA" type="button">Enregistrer mon questionnaire</button>
-    <button id="btnFindMatches" type="button">Trouver mon binôme</button>
-  </div>
-
-  <p class="muted" id="qaMsg"></p>
-</div>
-
-<div id="matchResults"></div>
-
-    <h3>Trouver un binôme (même département)</h3>
-    <div class="box">
-      <button id="btnFind" type="button">Rechercher</button>
-      <div id="results"></div>
-    </div>
+    <div id="matchResults"></div>
 
     <h3>Mes conversations</h3>
     <div class="box">
@@ -309,12 +317,10 @@ const userLine  = document.getElementById("userLine");
 
 const displayNameEl = document.getElementById("display_name");
 const departmentEl  = document.getElementById("department");
+const clubEl        = document.getElementById("club");
 const btnSave   = document.getElementById("btnSave");
 const btnActive = document.getElementById("btnActive");
 const saveMsg   = document.getElementById("saveMsg");
-
-const btnFind  = document.getElementById("btnFind");
-const results  = document.getElementById("results");
 
 const btnInbox = document.getElementById("btnInbox");
 const inbox    = document.getElementById("inbox");
@@ -328,6 +334,30 @@ const msgsDiv   = document.getElementById("msgs");
 const msgInput  = document.getElementById("msgInput");
 const btnSend   = document.getElementById("btnSend");
 const chatMsg   = document.getElementById("chatMsg");
+
+/* Questionnaire refs */
+const q_gender = document.getElementById("q_gender");
+const q_search = document.getElementById("q_search");
+const q_neighbors = document.getElementById("q_neighbors");
+const q_clubOnly = document.getElementById("q_clubOnly");
+const q_level  = document.getElementById("q_level");
+const lvlBadge = document.getElementById("lvlBadge");
+const q_hand = document.getElementById("q_hand");
+const q_side = document.getElementById("q_side");
+const q_style = document.getElementById("q_style");
+const q_comms = document.getElementById("q_comms");
+const q_mental = document.getElementById("q_mental");
+const q_tolerance = document.getElementById("q_tolerance");
+const q_goal = document.getElementById("q_goal");
+const q_freq = document.getElementById("q_freq");
+const q_avail = document.getElementById("q_avail");
+const searchHint = document.getElementById("searchHint");
+const neighborsHint = document.getElementById("neighborsHint");
+const clubHint = document.getElementById("clubHint");
+const btnSaveQA = document.getElementById("btnSaveQA");
+const btnFindMatches = document.getElementById("btnFindMatches");
+const qaMsg = document.getElementById("qaMsg");
+const matchResults = document.getElementById("matchResults");
 
 /* =========================
    State
@@ -358,235 +388,138 @@ function renderMessage(m){
   div.textContent = m.content || "";
   return div;
 }
-// ===== Questionnaire refs
-const q_gender = document.getElementById("q_gender");
-const q_search = document.getElementById("q_search");
-const q_level  = document.getElementById("q_level");
-const lvlBadge = document.getElementById("lvlBadge");
-const searchHint = document.getElementById("searchHint");
 
-const q_hand = document.getElementById("q_hand");
-const q_side = document.getElementById("q_side");
-const q_style = document.getElementById("q_style");
-const q_comms = document.getElementById("q_comms");
-const q_mental = document.getElementById("q_mental");
-const q_tolerance = document.getElementById("q_tolerance");
-const q_goal = document.getElementById("q_goal");
-const q_freq = document.getElementById("q_freq");
-const q_avail = document.getElementById("q_avail");
-
-const btnSaveQA = document.getElementById("btnSaveQA");
-const btnFindMatches = document.getElementById("btnFindMatches");
-const qaMsg = document.getElementById("qaMsg");
-const matchResults = document.getElementById("matchResults");
-
-function getQA(){
-  return {
-    gender: q_gender.value,        // "H" | "F"
-    search: q_search.value,        // "same" | "mix"
-    level: Number(q_level.value),  // 1..10
-    hand: q_hand.value,            // R/L
-    side: q_side.value,            // left/right/any
-    style: q_style.value,          // atk/def/bal
-    comms: q_comms.value,          // calm/norm/vocal
-    mental: q_mental.value,        // chill/comp/hard
-    tolerance: q_tolerance.value,  // patient/norm/strict
-    goal: q_goal.value,            // fun/progress/tourney
-    freq: q_freq.value,            // "1"/"2"/"3"/"v"
-    avail: q_avail.value           // week/end/both
-  };
+function normalizeClub(s){
+  return (s || "").trim().toLowerCase();
 }
 
-function applySearchHint(){
-  if(q_search.value === "same"){
-    searchHint.textContent = (q_gender.value === "H")
-      ? "Tu verras uniquement des hommes."
-      : "Tu verras uniquement des femmes.";
-  } else {
-    searchHint.textContent = "Tu verras hommes + femmes (mixte).";
-  }
+/* =========================
+   Départements voisins (métropole + 2A/2B)
+========================= */
+const DEP_NEIGHBORS = {
+  "01":["38","39","69","71","73","74"],
+  "02":["08","51","59","60","77","80"],
+  "03":["18","23","42","58","63","71"],
+  "04":["05","06","26","83","84"],
+  "05":["04","26","38","73"],
+  "06":["04","83"],
+  "07":["26","30","38","42","43","48","84"],
+  "08":["02","51","55"],
+  "09":["11","31","66"],
+  "10":["21","51","52","77","89"],
+  "11":["09","31","34","66","81"],
+  "12":["15","30","34","46","48","81","82"],
+  "13":["30","83","84"],
+  "14":["27","50","61","76"],
+  "15":["12","19","43","46","48","63"],
+  "16":["17","24","79","86","87"],
+  "17":["16","24","33","79","85"],
+  "18":["03","23","36","41","45","58"],
+  "19":["15","23","24","46","63","87"],
+  "2A":["2B"],
+  "2B":["2A"],
+  "21":["10","39","52","58","70","71","89"],
+  "22":["29","35","56"],
+  "23":["03","18","19","36","63","87"],
+  "24":["16","17","19","33","46","47","87"],
+  "25":["39","70","90"],
+  "26":["04","05","07","38","84"],
+  "27":["14","28","60","61","76","78","95"],
+  "28":["27","41","45","61","72","78","91"],
+  "29":["22","56"],
+  "30":["07","12","13","34","48","84"],
+  "31":["09","11","32","65","81","82"],
+  "32":["31","40","47","64","65","82"],
+  "33":["17","24","40","47"],
+  "34":["11","12","30","81"],
+  "35":["22","44","49","50","53","56"],
+  "36":["18","23","37","41","86","87"],
+  "37":["36","41","49","72","86"],
+  "38":["01","05","07","26","42","69","73"],
+  "39":["01","21","25","70","71"],
+  "40":["32","33","47","64"],
+  "41":["18","28","36","37","45","72"],
+  "42":["03","07","38","43","63","69","71"],
+  "43":["07","15","42","48","63"],
+  "44":["35","49","56","85"],
+  "45":["18","28","41","58","77","89","91"],
+  "46":["12","15","19","24","47","82"],
+  "47":["24","32","33","40","46","82"],
+  "48":["07","12","15","30","43"],
+  "49":["35","37","44","53","72","79","85","86"],
+  "50":["14","35","53","61"],
+  "51":["02","08","10","52","55","77"],
+  "52":["10","21","51","55","70","88"],
+  "53":["35","49","50","61","72"],
+  "54":["55","57","67","88"],
+  "55":["08","51","52","54","88"],
+  "56":["22","29","35","44"],
+  "57":["54","67"],
+  "58":["03","18","21","45","71","89"],
+  "59":["02","62","80"],
+  "60":["02","27","76","77","80","95"],
+  "61":["14","27","28","50","53","72"],
+  "62":["59","80"],
+  "63":["03","15","19","23","42","43"],
+  "64":["32","40","65"],
+  "65":["31","32","64"],
+  "66":["09","11"],
+  "67":["54","57","68","88"],
+  "68":["67","88","90"],
+  "69":["01","38","42","71"],
+  "70":["21","25","39","52","88","90"],
+  "71":["01","03","21","39","42","58","69"],
+  "72":["28","37","41","49","53","61"],
+  "73":["01","05","38","74"],
+  "74":["01","73"],
+  "75":["92","93","94"],
+  "76":["14","27","60","80"],
+  "77":["02","10","45","51","60","89","91","93","94","95"],
+  "78":["27","28","91","92","95"],
+  "79":["16","17","49","85","86"],
+  "80":["02","59","60","62","76"],
+  "81":["11","12","31","34","82"],
+  "82":["12","31","32","46","47","81"],
+  "83":["04","06","13","84"],
+  "84":["04","07","13","26","30","83"],
+  "85":["17","44","49","79"],
+  "86":["16","36","37","49","79","87"],
+  "87":["16","19","23","24","36","86"],
+  "88":["52","54","55","67","68","70","90"],
+  "89":["10","21","45","58","77"],
+  "90":["25","68","70","88"],
+  "91":["28","45","77","78","92","94"],
+  "92":["75","78","91","93","94","95"],
+  "93":["75","77","92","94","95"],
+  "94":["75","77","91","92","93"],
+  "95":["27","60","77","78","92","93"]
+};
+
+function normalizeDep(dep){
+  if(!dep) return "";
+  let d = String(dep).trim().toUpperCase();
+  if(/^\d$/.test(d)) d = "0"+d; // "1" -> "01"
+  if(d === "20") d = "2A"; // on traite "20" comme Corse, on gère en spécial
+  return d;
 }
-q_gender.addEventListener("change", applySearchHint);
-q_search.addEventListener("change", applySearchHint);
-applySearchHint();
 
-q_level.addEventListener("input", ()=>{ lvlBadge.textContent = String(q_level.value); });
+function allowedDeps(myDep, includeNeighbors){
+  const raw = String(myDep || "").trim().toUpperCase();
+  const d = normalizeDep(raw);
+  const set = new Set();
+  if(!d) return set;
 
-// ===== Sauvegarde questionnaire dans le profil
-btnSaveQA.addEventListener("click", async ()=>{
-  if(!currentUser) return;
-  qaMsg.textContent = "Enregistrement questionnaire...";
-  try{
-    const qa = getQA();
-    await setDoc(doc(db, "profiles", currentUser.uid), {
-      qa,
-      updated_at: serverTimestamp(),
-      is_active: currentProfile?.is_active ?? true
-    }, { merge:true });
-
-    // mettre à jour l’état local si tu veux
-    currentProfile = await (async ()=>{
-      const snap = await getDoc(doc(db,"profiles", currentUser.uid));
-      return snap.exists() ? snap.data() : currentProfile;
-    })();
-
-    qaMsg.textContent = "Questionnaire enregistré ✅";
-  }catch(e){
-    qaMsg.textContent = "Erreur enregistrement: " + (e?.message || e);
-    console.log("saveQA error", e);
+  if(raw === "20"){
+    set.add("2A"); set.add("2B");
+    return set;
   }
-});
 
-// ===== Filtre genre selon “Même catégorie / Mixte”
-function isGenderAllowed(meQA, otherQA){
-  if(!otherQA?.gender) return true; // si profil ancien, on ne bloque pas
-  if(meQA.search === "mix") return true;
-  // same category:
-  return otherQA.gender === meQA.gender;
+  set.add(d);
+  if(includeNeighbors){
+    (DEP_NEIGHBORS[d] || []).forEach(x => set.add(x));
+  }
+  return set;
 }
-
-// ===== Score de compatibilité simple (0..100)
-function compatibilityScore(meQA, otherQA){
-  if(!otherQA) return 0;
-
-  let score = 0;
-  let max = 0;
-
-  // Niveau (poids fort)
-  // diff 0 => +25, diff 1 => +20, diff 2 => +15, diff 3 => +8, diff >=4 => +0
-  max += 25;
-  const d = Math.abs((meQA.level||0) - (otherQA.level||0));
-  score += (d===0?25:d===1?20:d===2?15:d===3?8:0);
-
-  // Poste complémentaire : gauche/droite idéal
-  max += 12;
-  const a = meQA.side, b = otherQA.side;
-  if(a === "any" || b === "any") score += 8;
-  else if(a !== b) score += 12; // left+right
-  else score += 3;
-
-  // Style : atk/def se complète, bal va avec tout
-  max += 12;
-  const s1 = meQA.style, s2 = otherQA.style;
-  if(s1 === "bal" || s2 === "bal") score += 10;
-  else if((s1==="atk" && s2==="def") || (s1==="def" && s2==="atk")) score += 12;
-  else score += 6;
-
-  // Objectif
-  max += 10;
-  score += (meQA.goal === otherQA.goal) ? 10 : 4;
-
-  // Fréquence
-  max += 8;
-  score += (meQA.freq === "v" || otherQA.freq === "v") ? 5 : (meQA.freq === otherQA.freq ? 8 : 4);
-
-  // Dispos
-  max += 10;
-  const av1 = meQA.avail, av2 = otherQA.avail;
-  score += (av1 === "both" || av2 === "both" || av1 === av2) ? 10 : 2;
-
-  // Communication
-  max += 8;
-  score += (meQA.comms === otherQA.comms) ? 8 : 4;
-
-  // Mental
-  max += 8;
-  score += (meQA.mental === otherQA.mental) ? 8 : 4;
-
-  // Tolérance à l’erreur
-  max += 7;
-  score += (meQA.tolerance === otherQA.tolerance) ? 7 : 3;
-
-  // Main (petit bonus)
-  max += 5;
-  score += (meQA.hand !== otherQA.hand) ? 5 : 3; // droite+gauche peut être intéressant
-
-  return Math.round((score / max) * 100);
-}
-
-// ===== Recherche de binômes (même département + règles genre + score)
-btnFindMatches.addEventListener("click", async ()=>{
-  matchResults.innerHTML = "";
-  qaMsg.textContent = "";
-
-  if(!currentUser){
-    qaMsg.textContent = "Connecte-toi d’abord.";
-    return;
-  }
-  if(!currentProfile?.department){
-    qaMsg.textContent = "Complète ton profil (département) puis enregistre.";
-    return;
-  }
-
-  // On s’assure que mon QA est sauvegardé (sinon on prend le formulaire en live)
-  const meQA = currentProfile?.qa || getQA();
-
-  matchResults.innerHTML = "<div class='box'>Recherche en cours...</div>";
-
-  try{
-    const q = query(collection(db,"profiles"), where("is_active","==",true));
-    const snap = await getDocs(q);
-
-    const candidates = [];
-    snap.forEach(d=>{
-      if(d.id === currentUser.uid) return;
-      const p = d.data();
-      if((p.department||"") !== currentProfile.department) return;
-
-      const otherQA = p.qa || null;
-
-      // Filtre homme/femme selon recherche
-      if(!isGenderAllowed(meQA, otherQA)) return;
-
-      const score = compatibilityScore(meQA, otherQA);
-      candidates.push({
-        uid: d.id,
-        name: p.display_name || "Joueur",
-        dep: p.department || "",
-        score
-      });
-    });
-
-    candidates.sort((a,b)=> b.score - a.score);
-
-    if(candidates.length === 0){
-      matchResults.innerHTML = "<div class='box'><span class='muted'>Aucun binôme trouvé (même département + filtre catégorie/mixte).</span></div>";
-      return;
-    }
-
-    // Affichage top 10
-    const top = candidates.slice(0, 10);
-    matchResults.innerHTML = top.map(c => `
-      <div class="matchCard">
-        <div class="matchRow">
-          <div>
-            <strong>${c.name}</strong> <span class="badge">Dep ${c.dep}</span><br>
-            <span class="small">Compatibilité estimée</span>
-          </div>
-          <div class="matchScore">${c.score}%</div>
-        </div>
-        <button type="button" class="btnContactMatch"
-          data-uid="${c.uid}"
-          data-name="${encodeURIComponent(c.name)}">
-          Contacter (chat)
-        </button>
-      </div>
-    `).join("");
-
-    document.querySelectorAll(".btnContactMatch").forEach(btn=>{
-      btn.addEventListener("click", async ()=>{
-        const uid = btn.dataset.uid;
-        const name = decodeURIComponent(btn.dataset.name || "Joueur");
-        await openChat(uid, name); // tu as déjà openChat dans ton code
-      });
-    });
-
-  }catch(e){
-    matchResults.innerHTML = "<div class='box'><span class='muted'>Erreur matching.</span></div>";
-    console.log("match error", e);
-    qaMsg.textContent = "Erreur matching: " + (e?.message || e);
-  }
-});
 
 /* =========================
    AUTH
@@ -618,7 +551,7 @@ btnSignup.addEventListener("click", async (e)=>{
 btnLogout.addEventListener("click", ()=>signOut(auth));
 
 /* =========================
-   Profile
+   Profil
 ========================= */
 async function loadProfile(uid){
   const snap = await getDoc(doc(db,"profiles",uid));
@@ -626,6 +559,7 @@ async function loadProfile(uid){
   const p = snap.data();
   displayNameEl.value = p.display_name || "";
   departmentEl.value  = p.department || "";
+  clubEl.value        = p.club || "";
   return p;
 }
 
@@ -633,6 +567,7 @@ btnSave.addEventListener("click", async ()=>{
   if(!currentUser) return;
   const display_name = displayNameEl.value.trim();
   const department = departmentEl.value.trim();
+  const club = clubEl.value.trim();
   if(!display_name || !department){
     saveMsg.textContent = "Pseudo + département requis.";
     return;
@@ -641,6 +576,7 @@ btnSave.addEventListener("click", async ()=>{
   await setDoc(doc(db,"profiles", currentUser.uid), {
     display_name,
     department,
+    club,
     is_active: currentProfile?.is_active ?? true,
     updated_at: serverTimestamp(),
     created_at: currentProfile?.created_at ?? serverTimestamp()
@@ -648,6 +584,11 @@ btnSave.addEventListener("click", async ()=>{
 
   currentProfile = await loadProfile(currentUser.uid);
   saveMsg.textContent = "Profil enregistré ✅";
+
+  // met à jour hint club
+  clubHint.textContent = currentProfile?.club
+    ? `Club enregistré : “${currentProfile.club}”`
+    : "Aucun club enregistré (le filtre club ne pourra pas s’appliquer).";
 });
 
 btnActive.addEventListener("click", async ()=>{
@@ -663,46 +604,237 @@ btnActive.addEventListener("click", async ()=>{
 });
 
 /* =========================
-   Matching (même département)
+   Questionnaire
 ========================= */
-btnFind.addEventListener("click", async ()=>{
-  results.innerHTML = "Recherche...";
-  if(!currentProfile?.department){
-    results.innerHTML = "<p class='muted'>Complète ton département.</p>";
-    return;
+function getQA(){
+  return {
+    gender: q_gender.value,
+    search: q_search.value,        // same | mix
+    neighbors: !!q_neighbors.checked,
+    clubOnly: !!q_clubOnly.checked,
+    level: Number(q_level.value),
+    hand: q_hand.value,
+    side: q_side.value,
+    style: q_style.value,
+    comms: q_comms.value,
+    mental: q_mental.value,
+    tolerance: q_tolerance.value,
+    goal: q_goal.value,
+    freq: q_freq.value,
+    avail: q_avail.value
+  };
+}
+
+function applyHints(){
+  if(q_search.value === "same"){
+    searchHint.textContent = (q_gender.value === "H")
+      ? "Tu verras uniquement des hommes."
+      : "Tu verras uniquement des femmes.";
+  } else {
+    searchHint.textContent = "Tu verras hommes + femmes (mixte).";
   }
-  const q = query(collection(db,"profiles"), where("is_active","==",true));
-  const snap = await getDocs(q);
 
-  let html = "";
-  snap.forEach(d=>{
-    if(d.id === currentUser.uid) return;
-    const p = d.data();
-    if((p.department||"") !== currentProfile.department) return;
+  const dep = currentProfile?.department || departmentEl.value.trim();
+  const depSet = allowedDeps(dep, q_neighbors.checked);
+  neighborsHint.textContent = dep
+    ? `Zone: ${normalizeDep(dep)}${q_neighbors.checked ? " + voisins" : ""} (≈ ${depSet.size} départements)`
+    : "Renseigne ton département dans le profil.";
 
-    html += `
-      <div class="box" style="margin:8px 0">
-        <strong>${p.display_name||"Joueur"}</strong> — ${p.department}<br>
-        <button class="btnContact" type="button"
-          data-uid="${d.id}"
-          data-name="${encodeURIComponent(p.display_name||"Joueur")}">Contacter</button>
-      </div>
-    `;
-  });
+  const club = currentProfile?.club || clubEl.value.trim();
+  clubHint.textContent = club
+    ? `Club: “${club}”${q_clubOnly.checked ? " (filtre activé)" : ""}`
+    : "Aucun club enregistré (le filtre club ne pourra pas s’appliquer).";
+}
 
-  results.innerHTML = html || "<p class='muted'>Aucun résultat.</p>";
+q_gender.addEventListener("change", applyHints);
+q_search.addEventListener("change", applyHints);
+q_neighbors.addEventListener("change", applyHints);
+q_clubOnly.addEventListener("change", applyHints);
+q_level.addEventListener("input", ()=>{ lvlBadge.textContent = String(q_level.value); });
 
-  document.querySelectorAll(".btnContact").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      const uid = btn.dataset.uid;
-      const name = decodeURIComponent(btn.dataset.name || "Joueur");
-      await openChat(uid, name);
-    });
-  });
+btnSaveQA.addEventListener("click", async ()=>{
+  if(!currentUser) return;
+  qaMsg.textContent = "Enregistrement questionnaire...";
+  try{
+    const qa = getQA();
+    await setDoc(doc(db, "profiles", currentUser.uid), {
+      qa,
+      updated_at: serverTimestamp(),
+      is_active: currentProfile?.is_active ?? true
+    }, { merge:true });
+
+    currentProfile = await (async ()=>{
+      const snap = await getDoc(doc(db,"profiles", currentUser.uid));
+      return snap.exists() ? snap.data() : currentProfile;
+    })();
+
+    qaMsg.textContent = "Questionnaire enregistré ✅";
+    applyHints();
+  }catch(e){
+    qaMsg.textContent = "Erreur enregistrement: " + (e?.message || e);
+    console.log("saveQA error", e);
+  }
 });
 
 /* =========================
-   Ensure chat exists (sans getDoc)
+   Filtre genre same/mix
+========================= */
+function isGenderAllowed(meQA, otherQA){
+  if(!otherQA?.gender) return true;
+  if(meQA.search === "mix") return true;
+  return otherQA.gender === meQA.gender; // same category
+}
+
+/* =========================
+   Score compatibilité (0..100)
+========================= */
+function compatibilityScore(meQA, otherQA){
+  if(!otherQA) return 0;
+
+  let score = 0;
+  let max = 0;
+
+  max += 25;
+  const d = Math.abs((meQA.level||0) - (otherQA.level||0));
+  score += (d===0?25:d===1?20:d===2?15:d===3?8:0);
+
+  max += 12;
+  const a = meQA.side, b = otherQA.side;
+  if(a === "any" || b === "any") score += 8;
+  else if(a !== b) score += 12;
+  else score += 3;
+
+  max += 12;
+  const s1 = meQA.style, s2 = otherQA.style;
+  if(s1 === "bal" || s2 === "bal") score += 10;
+  else if((s1==="atk" && s2==="def") || (s1==="def" && s2==="atk")) score += 12;
+  else score += 6;
+
+  max += 10;
+  score += (meQA.goal === otherQA.goal) ? 10 : 4;
+
+  max += 8;
+  score += (meQA.freq === "v" || otherQA.freq === "v") ? 5 : (meQA.freq === otherQA.freq ? 8 : 4);
+
+  max += 10;
+  const av1 = meQA.avail, av2 = otherQA.avail;
+  score += (av1 === "both" || av2 === "both" || av1 === av2) ? 10 : 2;
+
+  max += 8;
+  score += (meQA.comms === otherQA.comms) ? 8 : 4;
+
+  max += 8;
+  score += (meQA.mental === otherQA.mental) ? 8 : 4;
+
+  max += 7;
+  score += (meQA.tolerance === otherQA.tolerance) ? 7 : 3;
+
+  max += 5;
+  score += (meQA.hand !== otherQA.hand) ? 5 : 3;
+
+  return Math.round((score / max) * 100);
+}
+
+/* =========================
+   Matching
+========================= */
+btnFindMatches.addEventListener("click", async ()=>{
+  matchResults.innerHTML = "";
+  qaMsg.textContent = "";
+
+  if(!currentUser){
+    qaMsg.textContent = "Connecte-toi d’abord.";
+    return;
+  }
+  if(!currentProfile?.department){
+    qaMsg.textContent = "Complète ton profil (département) puis enregistre.";
+    return;
+  }
+
+  const meQA = currentProfile?.qa || getQA();
+  const depSet = allowedDeps(currentProfile.department, meQA.neighbors);
+
+  const myClub = normalizeClub(currentProfile.club || "");
+  const useClubFilter = !!meQA.clubOnly && !!myClub;
+
+  matchResults.innerHTML = "<div class='box'>Recherche en cours...</div>";
+
+  try{
+    const q = query(collection(db,"profiles"), where("is_active","==",true));
+    const snap = await getDocs(q);
+
+    const candidates = [];
+    snap.forEach(d=>{
+      if(d.id === currentUser.uid) return;
+      const p = d.data();
+
+      const otherDep = normalizeDep(p.department);
+      if(!depSet.has(otherDep)) return;
+
+      if(useClubFilter){
+        const otherClub = normalizeClub(p.club || "");
+        if(!otherClub || otherClub !== myClub) return;
+      }
+
+      const otherQA = p.qa || null;
+
+      if(!isGenderAllowed(meQA, otherQA)) return;
+
+      const score = compatibilityScore(meQA, otherQA);
+      candidates.push({
+        uid: d.id,
+        name: p.display_name || "Joueur",
+        dep: p.department || "",
+        club: p.club || "",
+        score
+      });
+    });
+
+    candidates.sort((a,b)=> b.score - a.score);
+
+    if(candidates.length === 0){
+      matchResults.innerHTML = "<div class='box'><span class='muted'>Aucun binôme trouvé avec tes filtres.</span></div>";
+      return;
+    }
+
+    const top = candidates.slice(0, 10);
+    matchResults.innerHTML = top.map(c => `
+      <div class="matchCard">
+        <div class="matchRow">
+          <div>
+            <strong>${c.name}</strong>
+            <span class="badge">Dep ${c.dep}</span>
+            ${c.club ? `<span class="badge">Club: ${c.club}</span>` : ``}
+            <br>
+            <span class="small">Compatibilité estimée</span>
+          </div>
+          <div class="matchScore">${c.score}%</div>
+        </div>
+        <button type="button" class="btnContactMatch"
+          data-uid="${c.uid}"
+          data-name="${encodeURIComponent(c.name)}">
+          Contacter (chat)
+        </button>
+      </div>
+    `).join("");
+
+    document.querySelectorAll(".btnContactMatch").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const uid = btn.dataset.uid;
+        const name = decodeURIComponent(btn.dataset.name || "Joueur");
+        await openChat(uid, name);
+      });
+    });
+
+  }catch(e){
+    matchResults.innerHTML = "<div class='box'><span class='muted'>Erreur matching.</span></div>";
+    qaMsg.textContent = "Erreur matching: " + (e?.message || e);
+    console.log("match error", e);
+  }
+});
+
+/* =========================
+   Chat + Inbox (robuste)
 ========================= */
 async function ensureChatDoc(chatId, uidA, uidB){
   await setDoc(doc(db,"chats",chatId), {
@@ -714,9 +846,6 @@ async function ensureChatDoc(chatId, uidA, uidB){
   }, { merge: true });
 }
 
-/* =========================
-   Inbox = /inbox/{uid}/chats
-========================= */
 async function loadInbox(){
   inboxMsg.textContent = "";
   inbox.innerHTML = "Chargement...";
@@ -734,7 +863,6 @@ async function loadInbox(){
       return;
     }
 
-    // cache noms
     const nameCache = new Map();
     async function getName(uid){
       if(nameCache.has(uid)) return nameCache.get(uid);
@@ -773,11 +901,9 @@ async function loadInbox(){
     logDebug("inbox.error", err);
   }
 }
+
 btnInbox.addEventListener("click", loadInbox);
 
-/* =========================
-   Chat
-========================= */
 async function openChat(uid, name, forcedChatId=null){
   if(unsubMsgs) unsubMsgs();
   unsubMsgs = null;
@@ -792,10 +918,8 @@ async function openChat(uid, name, forcedChatId=null){
   chatMsg.textContent = "";
   msgsDiv.innerHTML = "Chargement...";
 
-  // ensure chat doc
   await ensureChatDoc(currentChatId, currentUser.uid, uid);
 
-  // listen messages
   const qMsgs = query(
     collection(db, "chats", currentChatId, "messages"),
     orderBy("created_at_ms","asc"),
@@ -827,9 +951,6 @@ btnCloseChat.addEventListener("click", ()=>{
   unsubMsgs = null;
 });
 
-/* =========================
-   Envoi STEP0/STEP1/STEP2 + inbox des 2
-========================= */
 btnSend.addEventListener("click", async ()=>{
   const text = msgInput.value.trim();
   if(!text || !currentChatId || !otherUid) return;
@@ -875,14 +996,12 @@ btnSend.addEventListener("click", async ()=>{
       last_message_sender: currentUser.uid
     });
 
-    // inbox pour moi
     await setDoc(doc(db, "inbox", currentUser.uid, "chats", currentChatId), {
       other_uid: otherUid,
       last_message_at_ms: now,
       last_message_preview: preview
     }, { merge: true });
 
-    // inbox pour l'autre
     await setDoc(doc(db, "inbox", otherUid, "chats", currentChatId), {
       other_uid: currentUser.uid,
       last_message_at_ms: now,
@@ -919,6 +1038,9 @@ onAuthStateChanged(auth, async (u)=>{
   userLine.textContent = `Connecté: ${u.email} | uid=${u.uid} | projectId=${app.options.projectId}`;
 
   currentProfile = await loadProfile(u.uid);
+
+  // Si le profil n’existe pas encore, on garde les hints basés sur les inputs
+  applyHints();
   await loadInbox();
 });
 </script>
