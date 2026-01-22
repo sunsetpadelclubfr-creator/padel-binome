@@ -5,6 +5,54 @@
   <title>Padel Binôme</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    /* Sunset clair */
+.sunset {
+  background: linear-gradient(180deg, #fff7ed 0%, #fff1f2 55%, #eef2ff 120%);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+}
+.sunset h3 { margin: 0 0 8px 0; }
+.sunset .hint { color:#6b7280; font-size:14px; margin-top:-2px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media (max-width:700px){ .grid2{ grid-template-columns:1fr; } }
+.pill {
+  display:inline-flex; gap:8px; flex-wrap:wrap;
+}
+.pill label{
+  border:1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.75);
+  padding:8px 10px;
+  border-radius: 999px;
+  cursor:pointer;
+}
+.pill input{ width:auto; margin:0 6px 0 0; }
+select, input[type="range"]{
+  background: rgba(255,255,255,0.85);
+}
+.badge {
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.75);
+  font-size:12px;
+  color:#374151;
+}
+.matchCard{
+  border:1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.75);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 10px 0;
+}
+.matchRow{
+  display:flex; justify-content:space-between; gap:10px; align-items:center;
+}
+.matchScore{ font-weight:700; }
+.small{ font-size:13px; color:#6b7280; }
+
     body{font-family:system-ui;margin:14px}
     .card{max-width:980px;margin:0 auto;border:1px solid #ddd;border-radius:14px;padding:14px}
     input,button,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ccc;border-radius:10px}
@@ -59,6 +107,126 @@
       </div>
       <p id="saveMsg" class="muted"></p>
     </div>
+    
+<h3>Questionnaire Padel (matching)</h3>
+<div class="sunset" id="qaBox">
+  <div class="hint">12 questions rapides pour trouver un binôme compatible.</div>
+
+  <div class="grid2" style="margin-top:10px">
+    <div>
+      <label><strong>1) Vous êtes ?</strong></label>
+      <select id="q_gender">
+        <option value="H">Homme</option>
+        <option value="F">Femme</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>2) Vous recherchez ?</strong></label>
+      <select id="q_search">
+        <option value="same">Même catégorie</option>
+        <option value="mix">Mixte</option>
+      </select>
+      <div class="small" id="searchHint"></div>
+    </div>
+
+    <div>
+      <label><strong>3) Niveau (1–10)</strong> <span class="badge" id="lvlBadge">5</span></label>
+      <input id="q_level" type="range" min="1" max="10" step="1" value="5">
+      <div class="small">1 = débutant · 10 = très avancé</div>
+    </div>
+
+    <div>
+      <label><strong>4) Main dominante</strong></label>
+      <select id="q_hand">
+        <option value="R">Droitier</option>
+        <option value="L">Gaucher</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>5) Poste préféré</strong></label>
+      <select id="q_side">
+        <option value="left">Gauche</option>
+        <option value="right">Droite</option>
+        <option value="any">Indifférent</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>6) Style principal</strong></label>
+      <select id="q_style">
+        <option value="atk">Attaquant</option>
+        <option value="def">Défenseur</option>
+        <option value="bal">Polyvalent</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>7) Communication</strong></label>
+      <select id="q_comms">
+        <option value="calm">Calme</option>
+        <option value="norm">Normal</option>
+        <option value="vocal">Très vocal</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>8) Mental</strong></label>
+      <select id="q_mental">
+        <option value="chill">Chill</option>
+        <option value="comp">Compétiteur</option>
+        <option value="hard">Très compétiteur</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>9) Tolérance à l’erreur</strong></label>
+      <select id="q_tolerance">
+        <option value="patient">Patience</option>
+        <option value="norm">Normal</option>
+        <option value="strict">Exigeant</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>10) Objectif</strong></label>
+      <select id="q_goal">
+        <option value="fun">Loisir</option>
+        <option value="progress">Progression</option>
+        <option value="tourney">Tournois</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>11) Fréquence</strong></label>
+      <select id="q_freq">
+        <option value="1">1x/sem</option>
+        <option value="2">2x/sem</option>
+        <option value="3">3x+/sem</option>
+        <option value="v">Variable</option>
+      </select>
+    </div>
+
+    <div>
+      <label><strong>12) Disponibilités</strong></label>
+      <select id="q_avail">
+        <option value="week">Semaine</option>
+        <option value="end">Week-end</option>
+        <option value="both">Les deux</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <button id="btnSaveQA" type="button">Enregistrer mon questionnaire</button>
+    <button id="btnFindMatches" type="button">Trouver mon binôme</button>
+  </div>
+
+  <p class="muted" id="qaMsg"></p>
+</div>
+
+<div id="matchResults"></div>
 
     <h3>Trouver un binôme (même département)</h3>
     <div class="box">
@@ -190,6 +358,235 @@ function renderMessage(m){
   div.textContent = m.content || "";
   return div;
 }
+// ===== Questionnaire refs
+const q_gender = document.getElementById("q_gender");
+const q_search = document.getElementById("q_search");
+const q_level  = document.getElementById("q_level");
+const lvlBadge = document.getElementById("lvlBadge");
+const searchHint = document.getElementById("searchHint");
+
+const q_hand = document.getElementById("q_hand");
+const q_side = document.getElementById("q_side");
+const q_style = document.getElementById("q_style");
+const q_comms = document.getElementById("q_comms");
+const q_mental = document.getElementById("q_mental");
+const q_tolerance = document.getElementById("q_tolerance");
+const q_goal = document.getElementById("q_goal");
+const q_freq = document.getElementById("q_freq");
+const q_avail = document.getElementById("q_avail");
+
+const btnSaveQA = document.getElementById("btnSaveQA");
+const btnFindMatches = document.getElementById("btnFindMatches");
+const qaMsg = document.getElementById("qaMsg");
+const matchResults = document.getElementById("matchResults");
+
+function getQA(){
+  return {
+    gender: q_gender.value,        // "H" | "F"
+    search: q_search.value,        // "same" | "mix"
+    level: Number(q_level.value),  // 1..10
+    hand: q_hand.value,            // R/L
+    side: q_side.value,            // left/right/any
+    style: q_style.value,          // atk/def/bal
+    comms: q_comms.value,          // calm/norm/vocal
+    mental: q_mental.value,        // chill/comp/hard
+    tolerance: q_tolerance.value,  // patient/norm/strict
+    goal: q_goal.value,            // fun/progress/tourney
+    freq: q_freq.value,            // "1"/"2"/"3"/"v"
+    avail: q_avail.value           // week/end/both
+  };
+}
+
+function applySearchHint(){
+  if(q_search.value === "same"){
+    searchHint.textContent = (q_gender.value === "H")
+      ? "Tu verras uniquement des hommes."
+      : "Tu verras uniquement des femmes.";
+  } else {
+    searchHint.textContent = "Tu verras hommes + femmes (mixte).";
+  }
+}
+q_gender.addEventListener("change", applySearchHint);
+q_search.addEventListener("change", applySearchHint);
+applySearchHint();
+
+q_level.addEventListener("input", ()=>{ lvlBadge.textContent = String(q_level.value); });
+
+// ===== Sauvegarde questionnaire dans le profil
+btnSaveQA.addEventListener("click", async ()=>{
+  if(!currentUser) return;
+  qaMsg.textContent = "Enregistrement questionnaire...";
+  try{
+    const qa = getQA();
+    await setDoc(doc(db, "profiles", currentUser.uid), {
+      qa,
+      updated_at: serverTimestamp(),
+      is_active: currentProfile?.is_active ?? true
+    }, { merge:true });
+
+    // mettre à jour l’état local si tu veux
+    currentProfile = await (async ()=>{
+      const snap = await getDoc(doc(db,"profiles", currentUser.uid));
+      return snap.exists() ? snap.data() : currentProfile;
+    })();
+
+    qaMsg.textContent = "Questionnaire enregistré ✅";
+  }catch(e){
+    qaMsg.textContent = "Erreur enregistrement: " + (e?.message || e);
+    console.log("saveQA error", e);
+  }
+});
+
+// ===== Filtre genre selon “Même catégorie / Mixte”
+function isGenderAllowed(meQA, otherQA){
+  if(!otherQA?.gender) return true; // si profil ancien, on ne bloque pas
+  if(meQA.search === "mix") return true;
+  // same category:
+  return otherQA.gender === meQA.gender;
+}
+
+// ===== Score de compatibilité simple (0..100)
+function compatibilityScore(meQA, otherQA){
+  if(!otherQA) return 0;
+
+  let score = 0;
+  let max = 0;
+
+  // Niveau (poids fort)
+  // diff 0 => +25, diff 1 => +20, diff 2 => +15, diff 3 => +8, diff >=4 => +0
+  max += 25;
+  const d = Math.abs((meQA.level||0) - (otherQA.level||0));
+  score += (d===0?25:d===1?20:d===2?15:d===3?8:0);
+
+  // Poste complémentaire : gauche/droite idéal
+  max += 12;
+  const a = meQA.side, b = otherQA.side;
+  if(a === "any" || b === "any") score += 8;
+  else if(a !== b) score += 12; // left+right
+  else score += 3;
+
+  // Style : atk/def se complète, bal va avec tout
+  max += 12;
+  const s1 = meQA.style, s2 = otherQA.style;
+  if(s1 === "bal" || s2 === "bal") score += 10;
+  else if((s1==="atk" && s2==="def") || (s1==="def" && s2==="atk")) score += 12;
+  else score += 6;
+
+  // Objectif
+  max += 10;
+  score += (meQA.goal === otherQA.goal) ? 10 : 4;
+
+  // Fréquence
+  max += 8;
+  score += (meQA.freq === "v" || otherQA.freq === "v") ? 5 : (meQA.freq === otherQA.freq ? 8 : 4);
+
+  // Dispos
+  max += 10;
+  const av1 = meQA.avail, av2 = otherQA.avail;
+  score += (av1 === "both" || av2 === "both" || av1 === av2) ? 10 : 2;
+
+  // Communication
+  max += 8;
+  score += (meQA.comms === otherQA.comms) ? 8 : 4;
+
+  // Mental
+  max += 8;
+  score += (meQA.mental === otherQA.mental) ? 8 : 4;
+
+  // Tolérance à l’erreur
+  max += 7;
+  score += (meQA.tolerance === otherQA.tolerance) ? 7 : 3;
+
+  // Main (petit bonus)
+  max += 5;
+  score += (meQA.hand !== otherQA.hand) ? 5 : 3; // droite+gauche peut être intéressant
+
+  return Math.round((score / max) * 100);
+}
+
+// ===== Recherche de binômes (même département + règles genre + score)
+btnFindMatches.addEventListener("click", async ()=>{
+  matchResults.innerHTML = "";
+  qaMsg.textContent = "";
+
+  if(!currentUser){
+    qaMsg.textContent = "Connecte-toi d’abord.";
+    return;
+  }
+  if(!currentProfile?.department){
+    qaMsg.textContent = "Complète ton profil (département) puis enregistre.";
+    return;
+  }
+
+  // On s’assure que mon QA est sauvegardé (sinon on prend le formulaire en live)
+  const meQA = currentProfile?.qa || getQA();
+
+  matchResults.innerHTML = "<div class='box'>Recherche en cours...</div>";
+
+  try{
+    const q = query(collection(db,"profiles"), where("is_active","==",true));
+    const snap = await getDocs(q);
+
+    const candidates = [];
+    snap.forEach(d=>{
+      if(d.id === currentUser.uid) return;
+      const p = d.data();
+      if((p.department||"") !== currentProfile.department) return;
+
+      const otherQA = p.qa || null;
+
+      // Filtre homme/femme selon recherche
+      if(!isGenderAllowed(meQA, otherQA)) return;
+
+      const score = compatibilityScore(meQA, otherQA);
+      candidates.push({
+        uid: d.id,
+        name: p.display_name || "Joueur",
+        dep: p.department || "",
+        score
+      });
+    });
+
+    candidates.sort((a,b)=> b.score - a.score);
+
+    if(candidates.length === 0){
+      matchResults.innerHTML = "<div class='box'><span class='muted'>Aucun binôme trouvé (même département + filtre catégorie/mixte).</span></div>";
+      return;
+    }
+
+    // Affichage top 10
+    const top = candidates.slice(0, 10);
+    matchResults.innerHTML = top.map(c => `
+      <div class="matchCard">
+        <div class="matchRow">
+          <div>
+            <strong>${c.name}</strong> <span class="badge">Dep ${c.dep}</span><br>
+            <span class="small">Compatibilité estimée</span>
+          </div>
+          <div class="matchScore">${c.score}%</div>
+        </div>
+        <button type="button" class="btnContactMatch"
+          data-uid="${c.uid}"
+          data-name="${encodeURIComponent(c.name)}">
+          Contacter (chat)
+        </button>
+      </div>
+    `).join("");
+
+    document.querySelectorAll(".btnContactMatch").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const uid = btn.dataset.uid;
+        const name = decodeURIComponent(btn.dataset.name || "Joueur");
+        await openChat(uid, name); // tu as déjà openChat dans ton code
+      });
+    });
+
+  }catch(e){
+    matchResults.innerHTML = "<div class='box'><span class='muted'>Erreur matching.</span></div>";
+    console.log("match error", e);
+    qaMsg.textContent = "Erreur matching: " + (e?.message || e);
+  }
+});
 
 /* =========================
    AUTH
