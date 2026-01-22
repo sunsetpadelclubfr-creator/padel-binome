@@ -444,13 +444,52 @@ btnSend.addEventListener("click", async ()=>{
   btnSend.disabled = true;
   chatMsg.textContent = "";
 
+  const chatRef = doc(db, "chats", currentChatId);
+  const msgsRef = collection(db, "chats", currentChatId, "messages");
+
+  // STEP 0: s'assurer que le chat existe
   try{
-    // 1) add message in subcollection
-    await addDoc(collection(db, "chats", currentChatId, "messages"), {
+    await ensureChatDoc(currentChatId, currentUser.uid, otherUid);
+  }catch(e0){
+    chatMsg.textContent = "Erreur STEP0 (ensureChatDoc): " + (e0?.message || e0) + " | code=" + (e0?.code||"");
+    logDebug("STEP0 error", e0);
+    btnSend.disabled = false;
+    return;
+  }
+
+  // STEP 1: envoyer le message
+  try{
+    await addDoc(msgsRef, {
       sender_id: currentUser.uid,
       content: text,
       created_at_ms: Date.now()
     });
+  }catch(e1){
+    chatMsg.textContent = "Erreur STEP1 (addDoc message): " + (e1?.message || e1) + " | code=" + (e1?.code||"");
+    logDebug("STEP1 error", e1);
+    btnSend.disabled = false;
+    return;
+  }
+
+  // STEP 2: update meta chat
+  try{
+    await updateDoc(chatRef, {
+      last_message_at_ms: Date.now(),
+      last_message_preview: text.slice(0,120),
+      last_message_sender: currentUser.uid
+    });
+  }catch(e2){
+    chatMsg.textContent =
+      "Message envoyé ✅ mais erreur STEP2 (update chat meta): " +
+      (e2?.message || e2) + " | code=" + (e2?.code||"");
+    logDebug("STEP2 error", e2);
+  }
+
+  msgInput.value = "";
+  await loadInbox();
+  btnSend.disabled = false;
+});
+
 
     // 2) update chat meta (preview)
     await updateDoc(doc(db, "chats", currentChatId), {
