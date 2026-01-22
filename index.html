@@ -26,6 +26,7 @@
 <div class="card">
   <h2>Padel Binôme</h2>
 
+  <!-- AUTH -->
   <div id="authView" class="box">
     <h3>Connexion / Inscription</h3>
     <input id="email" type="email" placeholder="Email">
@@ -41,6 +42,7 @@
     </details>
   </div>
 
+  <!-- APP -->
   <div id="appView" class="hidden">
     <div class="row">
       <div><p id="userLine" class="muted"></p></div>
@@ -71,6 +73,7 @@
       <p id="inboxMsg" class="muted"></p>
     </div>
 
+    <!-- CHAT -->
     <div id="chatBox" class="box hidden">
       <div class="row">
         <div>
@@ -167,7 +170,6 @@ let currentProfile = null;
 let currentChatId = null;
 let otherUid = null;
 let otherName = null;
-
 let unsubMsgs = null;
 
 /* =========================
@@ -317,7 +319,7 @@ async function ensureChatDoc(chatId, uidA, uidB){
     last_message_at_ms: 0,
     last_message_preview: "",
     last_message_sender: ""
-  });
+  }, { merge: true });
 }
 
 /* =========================
@@ -402,10 +404,10 @@ async function openChat(uid, name, forcedChatId=null){
   chatMsg.textContent = "";
   msgsDiv.innerHTML = "Chargement...";
 
-  // 1) ensure chat doc
+  // ensure chat doc
   await ensureChatDoc(currentChatId, currentUser.uid, uid);
 
-  // 2) listen messages (subcollection)
+  // listen messages
   const qMsgs = query(
     collection(db, "chats", currentChatId, "messages"),
     orderBy("created_at_ms","asc"),
@@ -437,6 +439,9 @@ btnCloseChat.addEventListener("click", ()=>{
   unsubMsgs = null;
 });
 
+/* =========================
+   ✅ Envoi STEP0/STEP1/STEP2 (correction)
+========================= */
 btnSend.addEventListener("click", async ()=>{
   const text = msgInput.value.trim();
   if(!text || !currentChatId || !otherUid) return;
@@ -488,25 +493,6 @@ btnSend.addEventListener("click", async ()=>{
   msgInput.value = "";
   await loadInbox();
   btnSend.disabled = false;
-});
-
-
-    // 2) update chat meta (preview)
-    await updateDoc(doc(db, "chats", currentChatId), {
-      last_message_at_ms: Date.now(),
-      last_message_preview: text.slice(0,120),
-      last_message_sender: currentUser.uid
-    });
-
-    msgInput.value = "";
-    await loadInbox();
-
-  }catch(err){
-    chatMsg.textContent = "Erreur envoi: " + (err?.message || err) + " | code=" + (err?.code||"");
-    logDebug("send.error", err);
-  }finally{
-    btnSend.disabled = false;
-  }
 });
 
 /* =========================
