@@ -166,7 +166,6 @@ const chatMsg   = document.getElementById("chatMsg");
 ========================= */
 let currentUser = null;
 let currentProfile = null;
-
 let currentChatId = null;
 let otherUid = null;
 let otherName = null;
@@ -306,10 +305,9 @@ btnFind.addEventListener("click", async ()=>{
 });
 
 /* =========================
-   Ensure chat exists
+   Ensure chat exists (sans getDoc)
 ========================= */
 async function ensureChatDoc(chatId, uidA, uidB){
-  // On écrit directement (merge) sans "get" préalable
   await setDoc(doc(db,"chats",chatId), {
     participants: [uidA, uidB],
     created_at_ms: Date.now(),
@@ -320,7 +318,7 @@ async function ensureChatDoc(chatId, uidA, uidB){
 }
 
 /* =========================
-   Inbox = list chats
+   Inbox = /inbox/{uid}/chats
 ========================= */
 async function loadInbox(){
   inboxMsg.textContent = "";
@@ -353,7 +351,7 @@ async function loadInbox(){
 
     inbox.innerHTML = "";
     for(const d of snap.docs){
-      const c = d.data();      // { other_uid, last_message_preview, last_message_at_ms }
+      const c = d.data();
       const chatId = d.id;
       const ouid = c.other_uid;
       const oname = await getName(ouid);
@@ -378,37 +376,6 @@ async function loadInbox(){
     logDebug("inbox.error", err);
   }
 }
-
-
-    inbox.innerHTML = "";
-    for(const d of snap.docs){
-      const c = d.data();
-      const chatId = d.id;
-      const parts = c.participants || [];
-      const ouid = (parts[0] === currentUser.uid) ? parts[1] : parts[0];
-      const oname = await getName(ouid);
-
-      const box = document.createElement("div");
-      box.className = "box";
-      box.innerHTML = `
-        <strong>${oname}</strong><br>
-        <span class="muted">${(c.last_message_preview||"").slice(0,120)}</span><br>
-      `;
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = "Ouvrir";
-      b.onclick = ()=>openChat(ouid, oname, chatId);
-      box.appendChild(b);
-      inbox.appendChild(box);
-    }
-
-  }catch(err){
-    inbox.innerHTML = "<p class='muted'>Inbox indisponible.</p>";
-    inboxMsg.textContent = "Erreur inbox: " + (err?.message || err) + " | code=" + (err?.code||"");
-    logDebug("inbox.error", err);
-  }
-}
-
 btnInbox.addEventListener("click", loadInbox);
 
 /* =========================
@@ -420,7 +387,6 @@ async function openChat(uid, name, forcedChatId=null){
 
   otherUid = uid;
   otherName = name;
-
   currentChatId = forcedChatId || pairKey(currentUser.uid, uid);
 
   chatBox.classList.remove("hidden");
@@ -465,7 +431,7 @@ btnCloseChat.addEventListener("click", ()=>{
 });
 
 /* =========================
-   ✅ Envoi STEP0/STEP1/STEP2 (correction)
+   Envoi STEP0/STEP1/STEP2 + inbox des 2
 ========================= */
 btnSend.addEventListener("click", async ()=>{
   const text = msgInput.value.trim();
@@ -477,7 +443,7 @@ btnSend.addEventListener("click", async ()=>{
   const chatRef = doc(db, "chats", currentChatId);
   const msgsRef = collection(db, "chats", currentChatId, "messages");
 
-  // STEP 0: s'assurer que le chat existe
+  // STEP 0
   try{
     await ensureChatDoc(currentChatId, currentUser.uid, otherUid);
   }catch(e0){
@@ -487,7 +453,7 @@ btnSend.addEventListener("click", async ()=>{
     return;
   }
 
-  // STEP 1: envoyer le message
+  // STEP 1
   try{
     await addDoc(msgsRef, {
       sender_id: currentUser.uid,
@@ -501,39 +467,41 @@ btnSend.addEventListener("click", async ()=>{
     return;
   }
 
-  // STEP 2: update meta chat + inbox des 2 utilisateurs
-try{
-  const now = Date.now();
-  const preview = text.slice(0,120);
+  // STEP 2: update chat meta + inbox des 2
+  try{
+    const now = Date.now();
+    const preview = text.slice(0,120);
 
-  // update chat meta
-  await updateDoc(doc(db, "chats", currentChatId), {
-    last_message_at_ms: now,
-    last_message_preview: preview,
-    last_message_sender: currentUser.uid
-  });
+    await updateDoc(chatRef, {
+      last_message_at_ms: now,
+      last_message_preview: preview,
+      last_message_sender: currentUser.uid
+    });
 
-  // update inbox pour moi
-  await setDoc(doc(db, "inbox", currentUser.uid, "chats", currentChatId), {
-    other_uid: otherUid,
-    last_message_at_ms: now,
-    last_message_preview: preview
-  }, { merge: true });
+    // inbox pour moi
+    await setDoc(doc(db, "inbox", currentUser.uid, "chats", currentChatId), {
+      other_uid: otherUid,
+      last_message_at_ms: now,
+      last_message_preview: preview
+    }, { merge: true });
 
-  // update inbox pour l'autre
-  await setDoc(doc(db, "inbox", otherUid, "chats", currentChatId), {
-    other_uid: currentUser.uid,
-    last_message_at_ms: now,
-    last_message_preview: preview
-  }, { merge: true });
+    // inbox pour l'autre
+    await setDoc(doc(db, "inbox", otherUid, "chats", currentChatId), {
+      other_uid: currentUser.uid,
+      last_message_at_ms: now,
+      last_message_preview: preview
+    }, { merge: true });
 
-}catch(e2){
-  chatMsg.textContent =
-    "Message envoyé ✅ mais erreur STEP2 (meta/inbox): " +
-    (e2?.message || e2) + " | code=" + (e2?.code||"");
-  logDebug("STEP2 error", e2);
-}
+  }catch(e2){
+    chatMsg.textContent =
+      "Message envoyé ✅ mais erreur STEP2 (meta/inbox): " +
+      (e2?.message || e2) + " | code=" + (e2?.code||"");
+    logDebug("STEP2 error", e2);
+  }
 
+  msgInput.value = "";
+  await loadInbox();
+  btnSend.disabled = false;
 });
 
 /* =========================
